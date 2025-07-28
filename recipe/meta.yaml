@@ -1,4 +1,4 @@
-{% set version = "2.12.0" %}
+{% set version = "2.18.1" %}
 {% set name = "tensorflow-text" %}
 
 package:
@@ -7,13 +7,11 @@ package:
 
 source:
   url: https://github.com/tensorflow/text/archive/v{{ version }}.tar.gz
-  sha256: 0de6d94d0b76a6050ae8c0ff618bbc5d9a646ef9929161149aad63974f8a56f2
+  sha256: 039f05f422a3ad55289a4897b5427d07cac7efe3943927c3b3c7a593f6123989
   patches:
-    - 0001-adjust-tf-version-range.patch
     - 0002-make-other-minor-adjustments.patch
     - 0003-do-not-check-for-bazel-version.patch
     - 0004-skip-pull-tf-dependencies.patch
-    - 0005-fix-broken-text-filters.patch
     - 0006-clean-up-after-bazel-temp-files.patch  # [linux]
 
 build:
