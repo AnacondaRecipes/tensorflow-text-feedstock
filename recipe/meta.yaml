@@ -16,8 +16,6 @@ source:
 
 build:
   number: 0
-  # skipping s390x and win-64 since we don't have tf for it
-  skip: True  # [s390x or win]
   # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
   # are too difficult to configure in bazel
   skip: True  # [osx]
