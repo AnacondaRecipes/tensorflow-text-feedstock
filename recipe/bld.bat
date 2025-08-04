@@ -7,7 +7,18 @@ echo Current directory: %CD%
 echo PATH: %PATH%
 echo PYTHON: %PYTHON%
 
-REM Let upstream script handle tensorflow installation
+REM Pre-install correct tensorflow to satisfy upstream script detection
+echo Pre-installing tensorflow from conda environment to satisfy upstream script
+%PYTHON% -c "import tensorflow; print('TensorFlow ' + tensorflow.__version__ + ' is already available')"
+if errorlevel 1 (
+    echo ERROR: TensorFlow not found in conda environment
+    exit 1
+)
+
+REM Temporarily enable PyPI access for upstream tensorflow detection
+echo Temporarily setting PIP_NO_INDEX=False for upstream script compatibility
+set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
+set "PIP_NO_INDEX=False"
 
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
@@ -23,6 +34,10 @@ if errorlevel 1 (
     echo ERROR: Build script failed with exit code %ERRORLEVEL%
     exit 1
 )
+
+REM Restore original PIP_NO_INDEX setting
+echo Restoring original PIP_NO_INDEX setting
+set "PIP_NO_INDEX=%PIP_NO_INDEX_BACKUP%"
 
 REM Install the built wheel
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
