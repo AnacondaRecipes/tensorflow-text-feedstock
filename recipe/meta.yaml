@@ -19,7 +19,7 @@ build:
   # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
   # are too difficult to configure in bazel
   # skip: True  # [osx]  # Re-enabled for tensorflow-text 2.18.1
-  skip: True  # [py<310 or py>=313]
+  skip: True  # [py<310 or py>=313 or linux or osx]  # Temporarily focusing on Windows only
 
   missing_dso_whitelist:                   # [linux]
     - $RPATH/libtensorflow_framework.so.2  # [linux]
