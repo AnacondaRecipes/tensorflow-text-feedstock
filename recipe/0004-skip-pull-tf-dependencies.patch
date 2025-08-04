@@ -9,13 +9,13 @@ Subject: [PATCH 4/6] skip pull tf dependencies
  2 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
-index f90dd56..d2114f6 100755
+index 029af0b..019bf6c 100755
 --- a/oss_scripts/run_build.sh
 +++ b/oss_scripts/run_build.sh
-@@ -24,10 +24,10 @@ source oss_scripts/configure.sh
- #   exit 1
- # fi
- 
+@@ -13,10 +13,10 @@ fi
+ # Run configure.
+ source oss_scripts/configure.sh
+
 -# Set tensorflow version
 -if [[ $osname != "darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
 -  source oss_scripts/prepare_tf_dep.sh
@@ -24,25 +24,26 @@ index f90dd56..d2114f6 100755
 +# if [[ $osname != "darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
 +#   source oss_scripts/prepare_tf_dep.sh
 +# fi
- 
+
  # Build the pip package.
- bazel build --enable_runfiles --jobs=1 oss_scripts/pip_package:build_pip_package
+ bazel run ${BUILD_ARGS[@]} --enable_runfiles //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
 diff --git a/oss_scripts/run_tests.sh b/oss_scripts/run_tests.sh
-index 57ceb9b..997a006 100644
+index c9046ae..14e925f 100644
 --- a/oss_scripts/run_tests.sh
 +++ b/oss_scripts/run_tests.sh
-@@ -16,8 +16,8 @@ set -e  # fail and exit on any command erroring
- # fi
- 
- # Set tensorflow version
+@@ -15,9 +15,9 @@ if [ "$installed_bazel_version" != "$tf_bazel_version" ]; then
+   exit 1
+ fi
+
+-# Set tensorflow version
 -if [[ $osname != "Darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
 -  source oss_scripts/prepare_tf_dep.sh
 -fi
++# # Set tensorflow version
 +# if [[ $osname != "Darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
 +#   source oss_scripts/prepare_tf_dep.sh
 +# fi
- 
- bazel test --test_output=errors --keep_going tensorflow_text:all
--- 
-2.39.3 (Apple Git-146)
 
+ bazel test --test_output=errors --keep_going --jobs=1 tensorflow_text:all
+--
+2.39.3 (Apple Git-146)
