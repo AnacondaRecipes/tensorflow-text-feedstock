@@ -12,8 +12,8 @@ source:
     - 0002-make-other-minor-adjustments.patch
     - 0003-do-not-check-for-bazel-version.patch
     - 0004-skip-pull-tf-dependencies.patch
-    - 0007-fix-tensorflow-version.patch
     # - 0006-clean-up-after-bazel-temp-files.patch  # [linux] # Temporarily disabled due to patch issues
+    # - 0007-fix-tensorflow-version.patch  # Removed - taking different approach
 
 build:
   number: 0

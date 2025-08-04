@@ -7,6 +7,14 @@ echo Current directory: %CD%
 echo PATH: %PATH%
 echo PYTHON: %PYTHON%
 
+REM Pre-install correct tensorflow version to avoid upstream script issues
+echo Pre-installing tensorflow==2.18.1 to avoid version conflicts
+%PYTHON% -m pip install tensorflow==2.18.1 --no-deps
+if errorlevel 1 (
+    echo ERROR: Failed to pre-install tensorflow
+    exit 1
+)
+
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
     echo ERROR: oss_scripts\run_build.sh not found!
