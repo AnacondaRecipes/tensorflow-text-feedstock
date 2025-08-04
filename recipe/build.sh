@@ -6,9 +6,9 @@ export PATH=$PREFIX/bin:$PATH
 
 $PYTHON -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
 
-# tensorflow-datasets not available on py311
-if [[ $PY_VER != "3.11" ]]
+# run the tests here since the build and host requirements are necessary for building
+# tensorflow-datasets available for py<313 via abs.yaml
+if [[ $PY_VER != "3.13" ]]
 then
-    # run the tests here since the build and host requirements are necessary for building
     source ./oss_scripts/run_tests.sh
 fi
