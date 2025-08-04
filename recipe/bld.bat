@@ -15,10 +15,12 @@ if errorlevel 1 (
     exit 1
 )
 
-REM Temporarily enable PyPI access for upstream tensorflow detection
-echo Temporarily setting PIP_NO_INDEX=False for upstream script compatibility
-set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
-set "PIP_NO_INDEX=False"
+REM Set environment variable to skip tensorflow installation
+echo Setting TF_VERSION to prevent upstream tensorflow installation
+set "TF_VERSION=2.18.1"
+
+REM Keep PIP_NO_INDEX=True to prevent any PyPI installations
+echo Keeping PIP_NO_INDEX=True to prevent upstream script from accessing PyPI
 
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
@@ -35,9 +37,7 @@ if errorlevel 1 (
     exit 1
 )
 
-REM Restore original PIP_NO_INDEX setting
-echo Restoring original PIP_NO_INDEX setting
-set "PIP_NO_INDEX=%PIP_NO_INDEX_BACKUP%"
+REM TF_VERSION environment variable should prevent tensorflow installation
 
 REM Install the built wheel
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
