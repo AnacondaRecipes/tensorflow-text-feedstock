@@ -19,9 +19,7 @@ build:
   # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
   # are too difficult to configure in bazel
   skip: True  # [osx]
-  # skip Python 2.x builds due to incompatible tensorflow-datasets versions
-  skip: True  # [py<30]
-  skip: True  # [py>=312]
+  skip: True  # [py<310 or py>=312]
 
   missing_dso_whitelist:                   # [linux]
     - $RPATH/libtensorflow_framework.so.2  # [linux]
