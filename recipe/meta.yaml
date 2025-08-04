@@ -19,7 +19,7 @@ build:
   # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
   # are too difficult to configure in bazel
   # skip: True  # [osx]  # Re-enabled for tensorflow-text 2.18.1
-  skip: True  # [py<310 or py>312]
+  skip: True  # [py<310 or py>=313]
 
   missing_dso_whitelist:                   # [linux]
     - $RPATH/libtensorflow_framework.so.2  # [linux]
@@ -45,7 +45,7 @@ requirements:
     # The version of tensorflow has to match the version of tensorflow-text
     - tensorflow {{ version }}
     # tensorflow-datasets is necessary to run some tests
-    - tensorflow-datasets  # [py<=312]
+    - tensorflow-datasets  # [py<313]
     # uncomment this to build against other flavors
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
   run:
