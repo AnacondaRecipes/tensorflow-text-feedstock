@@ -12,7 +12,7 @@ source:
     - 0002-make-other-minor-adjustments.patch
     - 0003-do-not-check-for-bazel-version.patch
     - 0004-skip-pull-tf-dependencies.patch
-    - 0006-clean-up-after-bazel-temp-files.patch  # [linux]
+    # - 0006-clean-up-after-bazel-temp-files.patch  # [linux] # Temporarily disabled due to patch issues
 
 build:
   number: 0
@@ -43,14 +43,14 @@ requirements:
     - setuptools
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow {{ version }} =*cpu*
+    - tensorflow {{ version }}
     # tensorflow-datasets is necessary to run some tests
-    - tensorflow-datasets >=4.9.9  # [py<313]
+    - tensorflow-datasets ==4.9.9  # [py<313]
     # uncomment this to build against other flavors
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
   run:
     - python
-    - {{ pin_compatible("tensorflow", min_pin="x.x.x", max_pin="x.x") }} =*cpu*
+    - {{ pin_compatible("tensorflow", min_pin="x.x.x", max_pin="x.x") }}
     - tensorflow-hub >=0.8.0
     # uncomment this to build against other flavors
     - _tflow_select * {{ tensorflow_flavor }}
