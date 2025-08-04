@@ -3,9 +3,24 @@ REM adding host environment bin to the path because on some platforms it uses _b
 REM instead of the host environment python
 set PATH=%PREFIX%\Scripts;%PREFIX%\bin;%PATH%
 
+echo Current directory: %CD%
+echo PATH: %PATH%
+echo PYTHON: %PYTHON%
+
+REM Check if build script exists
+if not exist "oss_scripts\run_build.sh" (
+    echo ERROR: oss_scripts\run_build.sh not found!
+    dir oss_scripts
+    exit 1
+)
+
 REM Run the build script
+echo Running: bash oss_scripts/run_build.sh
 bash oss_scripts/run_build.sh
-if errorlevel 1 exit 1
+if errorlevel 1 (
+    echo ERROR: Build script failed with exit code %ERRORLEVEL%
+    exit 1
+)
 
 REM Install the built wheel
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation

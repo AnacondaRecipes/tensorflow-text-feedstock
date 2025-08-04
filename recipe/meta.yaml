@@ -16,6 +16,7 @@ source:
 
 build:
   number: 0
+  ignore_prefix_files: True
   # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
   # are too difficult to configure in bazel
   # skip: True  # [osx]  # Re-enabled for tensorflow-text 2.18.1
