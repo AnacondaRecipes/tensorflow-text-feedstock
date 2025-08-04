@@ -15,12 +15,10 @@ if errorlevel 1 (
     exit 1
 )
 
-REM Set environment variable to skip tensorflow installation
-echo Setting TF_VERSION to prevent upstream tensorflow installation
-set "TF_VERSION=2.18.1"
-
-REM Keep PIP_NO_INDEX=True to prevent any PyPI installations
-echo Keeping PIP_NO_INDEX=True to prevent upstream script from accessing PyPI
+REM Temporarily allow PyPI access and let upstream install tensorflow==2.18.0
+echo Allowing upstream script to install tensorflow==2.18.0 from PyPI
+set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
+set "PIP_NO_INDEX=False"
 
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
@@ -37,7 +35,9 @@ if errorlevel 1 (
     exit 1
 )
 
-REM TF_VERSION environment variable should prevent tensorflow installation
+REM Restore original PIP_NO_INDEX setting after build
+echo Restoring original PIP_NO_INDEX setting
+set "PIP_NO_INDEX=%PIP_NO_INDEX_BACKUP%"
 
 REM Install the built wheel
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
