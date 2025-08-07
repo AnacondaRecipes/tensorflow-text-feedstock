@@ -109,6 +109,11 @@ REM Debug: Check if environment variables are being passed to bash
 echo Checking if pip environment variables are accessible in bash...
 bash -c "echo PIP_USE_PEP517: $PIP_USE_PEP517 && echo PIP_NO_BUILD_ISOLATION: $PIP_NO_BUILD_ISOLATION && python -c 'import promise; print(\"promise available in bash:\", promise.__version__)' 2>/dev/null || echo 'promise not found in bash'"
 
+REM Set PYTHONPATH to include system site-packages for Bazel subprocesses
+echo Setting PYTHONPATH to include system packages...
+for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepackages()))"') do set "PYTHONPATH=%%i;%PYTHONPATH%"
+echo PYTHONPATH: %PYTHONPATH%
+
 REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
 bash oss_scripts/run_build.sh
