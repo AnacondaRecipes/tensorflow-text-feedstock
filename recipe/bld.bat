@@ -57,7 +57,9 @@ if not exist "oss_scripts\run_build.sh" (
 REM Create a Unix-compatible bazel wrapper for bash environment
 echo Creating bazel wrapper for bash environment...
 echo #!/bin/bash > "%BUILD_PREFIX%\bin\bazel"
-echo exec "%BUILD_PREFIX%/bin/bazel.exe" "$@" >> "%BUILD_PREFIX%\bin\bazel"
+echo # Find bazel.exe in the same directory as this script >> "%BUILD_PREFIX%\bin\bazel"
+echo SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" ^&^& pwd)" >> "%BUILD_PREFIX%\bin\bazel"
+echo exec "$SCRIPT_DIR/bazel.exe" "$@" >> "%BUILD_PREFIX%\bin\bazel"
 
 REM Make it executable (chmod equivalent for Windows doesn't exist, but bash should handle it)
 REM Also create a batch wrapper for CMD environment
