@@ -55,6 +55,15 @@ if errorlevel 1 (
     %PYTHON% -m pip install wheel --upgrade
 )
 
+REM Also ensure setuptools is up to date as it may help with bdist_wheel
+echo Ensuring setuptools is up to date...
+pip install setuptools --upgrade
+
+REM Set environment variables to help with pip metadata generation issues
+echo Setting pip environment variables to avoid metadata generation issues...
+set "PIP_USE_PEP517=false"
+set "PIP_DISABLE_PIP_VERSION_CHECK=1"
+
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
     echo ERROR: oss_scripts\run_build.sh not found!
