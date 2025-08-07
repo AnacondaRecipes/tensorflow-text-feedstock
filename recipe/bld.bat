@@ -59,6 +59,13 @@ REM Also ensure setuptools is up to date as it may help with bdist_wheel
 echo Ensuring setuptools is up to date...
 pip install setuptools --upgrade
 
+REM Install perl which is required by TensorFlow build process
+echo Installing perl for TensorFlow build requirements...
+conda install -y perl
+if errorlevel 1 (
+    echo WARNING: Could not install perl via conda, build may fail
+)
+
 REM Pre-install problematic packages that cause metadata generation issues
 echo Pre-installing promise package to avoid metadata generation issues...
 pip install promise
