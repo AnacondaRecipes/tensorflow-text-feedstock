@@ -70,6 +70,7 @@ REM Set environment variables to help with pip metadata generation issues
 echo Setting pip environment variables to avoid metadata generation issues...
 set "PIP_USE_PEP517=false"
 set "PIP_DISABLE_PIP_VERSION_CHECK=1"
+set "PIP_NO_BUILD_ISOLATION=true"
 
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
@@ -103,6 +104,10 @@ if errorlevel 1 (
 REM Debug: Check Python environment for bash
 echo Checking Python environment for bash...
 bash -c "echo Python in bash: && python --version && python -c 'import wheel; print(\"wheel available in bash:\", wheel.__version__)'"
+
+REM Debug: Check if environment variables are being passed to bash
+echo Checking if pip environment variables are accessible in bash...
+bash -c "echo PIP_USE_PEP517: $PIP_USE_PEP517 && echo PIP_NO_BUILD_ISOLATION: $PIP_NO_BUILD_ISOLATION && python -c 'import promise; print(\"promise available in bash:\", promise.__version__)' 2>/dev/null || echo 'promise not found in bash'"
 
 REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
