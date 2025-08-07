@@ -72,6 +72,12 @@ set "PIP_USE_PEP517=false"
 set "PIP_DISABLE_PIP_VERSION_CHECK=1"
 set "PIP_NO_BUILD_ISOLATION=true"
 
+REM Set Bazel environment variables to handle Windows-specific issues (if needed)
+REM echo Setting Bazel environment variables for Windows...
+REM Commenting out hard-coded VS paths - let Bazel auto-detect or use conda's compiler
+REM set "BAZEL_VS=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools"
+REM set "BAZEL_VC=C:\Program Files (x86)\Microsoft Visual Studio\2019\BuildTools\VC"
+
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
     echo ERROR: oss_scripts\run_build.sh not found!
@@ -111,7 +117,7 @@ bash -c "echo PIP_USE_PEP517: $PIP_USE_PEP517 && echo PIP_NO_BUILD_ISOLATION: $P
 
 REM Set PYTHONPATH to include system site-packages for Bazel subprocesses
 echo Setting PYTHONPATH to include system packages...
-for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepackages()))"') do set "PYTHONPATH=%%i;%PYTHONPATH%"
+for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepackages()))"') do set "PYTHONPATH=%%i"
 echo PYTHONPATH: %PYTHONPATH%
 
 REM Run the build script with enhanced environment
