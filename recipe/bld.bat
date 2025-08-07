@@ -59,6 +59,13 @@ REM Also ensure setuptools is up to date as it may help with bdist_wheel
 echo Ensuring setuptools is up to date...
 pip install setuptools --upgrade
 
+REM Pre-install problematic packages that cause metadata generation issues
+echo Pre-installing promise package to avoid metadata generation issues...
+pip install promise
+if errorlevel 1 (
+    echo WARNING: Could not pre-install promise package
+)
+
 REM Set environment variables to help with pip metadata generation issues
 echo Setting pip environment variables to avoid metadata generation issues...
 set "PIP_USE_PEP517=false"
