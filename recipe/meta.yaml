@@ -8,13 +8,13 @@ package:
 source:
   url: https://github.com/tensorflow/text/archive/v{{ version }}.tar.gz
   sha256: 039f05f422a3ad55289a4897b5427d07cac7efe3943927c3b3c7a593f6123989
-  # patches:
-    # Temporarily disabling ALL patches for Windows due to line ending issues
-    # - 0002-make-other-minor-adjustments.patch  # Temporarily disabled for Windows line ending issues
-    # - 0003-do-not-check-for-bazel-version.patch  # Temporarily disabled for Windows line ending issues
-    # - 0004-skip-pull-tf-dependencies.patch  # Temporarily disabled for Windows line ending issues
-    # - 0006-clean-up-after-bazel-temp-files.patch  # [linux] # Temporarily disabled due to patch issues
-    # - 0007-fix-tensorflow-version.patch  # Removed - taking different approach
+  patches:
+    # Re-enabling patches now that line ending issues are resolved
+    - 0002-make-other-minor-adjustments.patch
+    - 0008-fix-windows-library-paths.patch  # Fix library path issue on Windows
+    # - 0003-do-not-check-for-bazel-version.patch  # May not be needed since we fixed bazel access
+    # - 0004-skip-pull-tf-dependencies.patch  # May not be needed since we fixed dependency access
+    # - 0006-clean-up-after-bazel-temp-files.patch  # [linux] # Linux-specific, keep disabled for Windows
 
 build:
   number: 0
