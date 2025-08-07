@@ -58,8 +58,10 @@ REM Create a Unix-compatible bazel wrapper for bash environment
 echo Creating bazel wrapper for bash environment...
 echo #!/bin/bash > "%BUILD_PREFIX%\bin\bazel"
 echo # Wrapper to call bazel.exe from bash environment >> "%BUILD_PREFIX%\bin\bazel"
-echo # Use cygpath to convert Windows path to Unix format for bash >> "%BUILD_PREFIX%\bin\bazel"
-echo exec "$(cygpath '%BUILD_PREFIX%\Library\bin\bazel.exe')" "$@" >> "%BUILD_PREFIX%\bin\bazel"
+echo # Debug: Show what cygpath resolves to >> "%BUILD_PREFIX%\bin\bazel"
+echo BAZEL_PATH="$(cygpath '%BUILD_PREFIX%\Library\bin\bazel.exe')" >> "%BUILD_PREFIX%\bin\bazel"
+echo echo "DEBUG: cygpath resolved to: $BAZEL_PATH" >> "%BUILD_PREFIX%\bin\bazel"
+echo exec "$BAZEL_PATH" "$@" >> "%BUILD_PREFIX%\bin\bazel"
 
 REM Make it executable (chmod equivalent for Windows doesn't exist, but bash should handle it)
 REM Also create a batch wrapper for CMD environment
