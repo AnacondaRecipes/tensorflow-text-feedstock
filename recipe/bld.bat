@@ -120,6 +120,22 @@ echo Setting PYTHONPATH to include system packages...
 for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepackages()))"') do set "PYTHONPATH=%%i"
 echo PYTHONPATH: %PYTHONPATH%
 
+REM Apply patch changes directly to upstream files (avoiding patch application issues)
+echo Applying Windows-specific fixes directly to upstream files...
+
+REM Fix 1: Add --jobs=1 to bazel run command in run_build.sh
+echo Modifying oss_scripts/run_build.sh to add --jobs=1 for Windows stability...
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1' | Set-Content 'oss_scripts/run_build.sh'"
+
+REM Fix 2: Comment out $plat_name in build_pip_package.sh to avoid Windows platform issues
+echo Modifying oss_scripts/pip_package/build_pip_package.sh to comment out plat_name...
+powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
+
+REM Verify the changes were applied
+echo Verifying changes were applied...
+findstr /C:"--jobs=1" oss_scripts/run_build.sh
+findstr /C:"#$plat_name" oss_scripts/pip_package/build_pip_package.sh
+
 REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
 bash oss_scripts/run_build.sh
