@@ -1,11 +1,24 @@
 @echo off
 REM adding host environment bin to the path because on some platforms it uses _build_env/bin/python
 REM instead of the host environment python
-set PATH=%PREFIX%\Scripts;%PREFIX%\bin;%PATH%
+REM CRITICAL: Add BUILD_PREFIX first so bazel is found
+set PATH=%BUILD_PREFIX%\Scripts;%BUILD_PREFIX%\bin;%BUILD_PREFIX%;%PREFIX%\Scripts;%PREFIX%\bin;%PATH%
 
 echo Current directory: %CD%
 echo PATH: %PATH%
 echo PYTHON: %PYTHON%
+echo BUILD_PREFIX: %BUILD_PREFIX%
+
+REM Verify bazel is accessible
+echo Checking for bazel...
+where bazel
+if errorlevel 1 (
+    echo ERROR: bazel not found in PATH
+    echo BUILD_PREFIX: %BUILD_PREFIX%
+    dir "%BUILD_PREFIX%\bin" /b | findstr bazel
+    exit 1
+)
+bazel version
 
 REM Pre-install correct tensorflow to satisfy upstream script detection
 echo Pre-installing tensorflow from conda environment to satisfy upstream script
@@ -13,6 +26,14 @@ echo Pre-installing tensorflow from conda environment to satisfy upstream script
 if errorlevel 1 (
     echo ERROR: TensorFlow not found in conda environment
     exit 1
+)
+
+REM Create python3 symlink for bash environment compatibility
+echo Creating python3 compatibility...
+if exist "%BUILD_PREFIX%\bin\python3.exe" del "%BUILD_PREFIX%\bin\python3.exe"
+copy "%PREFIX%\python.exe" "%BUILD_PREFIX%\bin\python3.exe" >nul
+if errorlevel 1 (
+    echo WARNING: Could not create python3.exe symlink
 )
 
 REM Temporarily allow PyPI access and let upstream install tensorflow==2.18.0
