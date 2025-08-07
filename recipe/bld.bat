@@ -66,6 +66,20 @@ REM Debug: Show what's in the bin directory
 echo Contents of BUILD_PREFIX\bin:
 dir "%BUILD_PREFIX%\bin" | findstr bazel
 
+REM Ensure wheel package is available for upstream script
+echo Verifying wheel package availability...
+%PYTHON% -c "import wheel; print('wheel package is available:', wheel.__version__)"
+if errorlevel 1 (
+    echo ERROR: wheel package not found in Python environment
+    echo Installing wheel package...
+    %PYTHON% -m pip install wheel
+    if errorlevel 1 exit 1
+)
+
+REM Debug: Check Python environment for bash
+echo Checking Python environment for bash...
+bash -c "echo Python in bash: && python --version && python -c 'import wheel; print(\"wheel available in bash:\", wheel.__version__)'"
+
 REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
 bash oss_scripts/run_build.sh
