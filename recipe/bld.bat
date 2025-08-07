@@ -30,10 +30,16 @@ if errorlevel 1 (
 
 REM Create python3 symlink for bash environment compatibility
 echo Creating python3 compatibility...
+if not exist "%BUILD_PREFIX%\bin" mkdir "%BUILD_PREFIX%\bin"
 if exist "%BUILD_PREFIX%\bin\python3.exe" del "%BUILD_PREFIX%\bin\python3.exe"
 copy "%PREFIX%\python.exe" "%BUILD_PREFIX%\bin\python3.exe" >nul
 if errorlevel 1 (
-    echo WARNING: Could not create python3.exe symlink
+    echo WARNING: Could not create python3.exe symlink - trying alternative approach
+    echo Checking if directories exist...
+    echo PREFIX: %PREFIX%
+    echo BUILD_PREFIX: %BUILD_PREFIX%
+    if exist "%PREFIX%\python.exe" echo python.exe found in PREFIX
+    if exist "%BUILD_PREFIX%\bin" echo BUILD_PREFIX\bin exists
 )
 
 REM Temporarily allow PyPI access and let upstream install tensorflow==2.18.0
@@ -48,8 +54,23 @@ if not exist "oss_scripts\run_build.sh" (
     exit 1
 )
 
-REM Run the build script
+REM Create a Unix-compatible bazel wrapper for bash environment
+echo Creating bazel wrapper for bash environment...
+echo #!/bin/bash > "%BUILD_PREFIX%\bin\bazel"
+echo exec "%BUILD_PREFIX%/bin/bazel.exe" "$@" >> "%BUILD_PREFIX%\bin\bazel"
+
+REM Make it executable (chmod equivalent for Windows doesn't exist, but bash should handle it)
+REM Also create a batch wrapper for CMD environment
+echo @echo off > "%BUILD_PREFIX%\bin\bazel.bat"
+echo "%BUILD_PREFIX%\bin\bazel.exe" %%* >> "%BUILD_PREFIX%\bin\bazel.bat"
+
+REM Debug: Show what's in the bin directory
+echo Contents of BUILD_PREFIX\bin:
+dir "%BUILD_PREFIX%\bin" | findstr bazel
+
+REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
+set "BAZEL_REAL=%BUILD_PREFIX%\bin\bazel.exe"
 bash oss_scripts/run_build.sh
 if errorlevel 1 (
     echo ERROR: Build script failed with exit code %ERRORLEVEL%
