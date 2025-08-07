@@ -54,22 +54,13 @@ if not exist "oss_scripts\run_build.sh" (
     exit 1
 )
 
-REM Create a Unix-compatible bazel wrapper for bash environment
-echo Creating bazel wrapper for bash environment...
-set "BAZEL_FULL_PATH=%BUILD_PREFIX%\Library\bin\bazel.exe"
-echo #!/bin/bash > "%BUILD_PREFIX%\bin\bazel"
-echo # Wrapper to call bazel.exe from bash environment >> "%BUILD_PREFIX%\bin\bazel"
-echo # Debug: Show resolved paths >> "%BUILD_PREFIX%\bin\bazel"
-echo BAZEL_WIN_PATH="%BAZEL_FULL_PATH%" >> "%BUILD_PREFIX%\bin\bazel"
-echo echo "DEBUG: Windows path: $BAZEL_WIN_PATH" >> "%BUILD_PREFIX%\bin\bazel"
-echo BAZEL_PATH="$(cygpath "$BAZEL_WIN_PATH")" >> "%BUILD_PREFIX%\bin\bazel"
-echo echo "DEBUG: cygpath resolved to: $BAZEL_PATH" >> "%BUILD_PREFIX%\bin\bazel"
-echo exec "$BAZEL_PATH" "$@" >> "%BUILD_PREFIX%\bin\bazel"
-
-REM Make it executable (chmod equivalent for Windows doesn't exist, but bash should handle it)
-REM Also create a batch wrapper for CMD environment
-echo @echo off > "%BUILD_PREFIX%\bin\bazel.bat"
-echo "%BAZEL_FULL_PATH%" %%* >> "%BUILD_PREFIX%\bin\bazel.bat"
+REM Simple approach: just copy bazel.exe to bazel (without .exe) for bash
+echo Creating simple bazel copy for bash environment...
+copy "%BUILD_PREFIX%\Library\bin\bazel.exe" "%BUILD_PREFIX%\bin\bazel" >nul
+if errorlevel 1 (
+    echo ERROR: Could not copy bazel.exe to bin directory
+    exit 1
+)
 
 REM Debug: Show what's in the bin directory
 echo Contents of BUILD_PREFIX\bin:
@@ -77,7 +68,6 @@ dir "%BUILD_PREFIX%\bin" | findstr bazel
 
 REM Run the build script with enhanced environment
 echo Running: bash oss_scripts/run_build.sh
-set "BAZEL_REAL=%BUILD_PREFIX%\bin\bazel.exe"
 bash oss_scripts/run_build.sh
 if errorlevel 1 (
     echo ERROR: Build script failed with exit code %ERRORLEVEL%
