@@ -47,6 +47,14 @@ echo Allowing upstream script to install tensorflow==2.18.0 from PyPI
 set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
 set "PIP_NO_INDEX=False"
 
+REM Pre-install wheel globally to ensure it's available to all pip subprocesses
+echo Pre-installing wheel to ensure availability in pip subprocesses...
+pip install wheel
+if errorlevel 1 (
+    echo WARNING: Could not install wheel globally, attempting with python -m pip
+    %PYTHON% -m pip install wheel --upgrade
+)
+
 REM Check if build script exists
 if not exist "oss_scripts\run_build.sh" (
     echo ERROR: oss_scripts\run_build.sh not found!
