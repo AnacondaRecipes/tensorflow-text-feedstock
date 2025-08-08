@@ -151,13 +151,33 @@ if errorlevel 1 (
     exit 1
 )
 
+REM Debug: Check what was built
+echo Checking for built wheel files...
+dir tensorflow_text-*.whl 2>nul
+if errorlevel 1 (
+    echo No wheel files found in current directory, checking subdirectories...
+    dir /s tensorflow_text-*.whl 2>nul
+    if errorlevel 1 (
+        echo ERROR: No tensorflow_text wheel files found anywhere!
+        echo Current directory contents:
+        dir
+        exit 1
+    )
+)
+
 REM Restore original PIP_NO_INDEX setting after build
 echo Restoring original PIP_NO_INDEX setting
 set "PIP_NO_INDEX=%PIP_NO_INDEX_BACKUP%"
 
-REM Install the built wheel
+REM Install the built wheel immediately after build completes
+echo Installing the built wheel into conda environment...
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
-if errorlevel 1 exit 1
+if errorlevel 1 (
+    echo ERROR: Failed to install tensorflow_text wheel
+    echo Looking for wheel files:
+    dir tensorflow_text-*.whl
+    exit 1
+)
 
 REM run the tests here since the build and host requirements are necessary for building
 REM tensorflow-datasets temporarily disabled due to protobuf conflicts with TF 2.18.1
