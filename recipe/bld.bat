@@ -80,9 +80,13 @@ if errorlevel 1 (
     echo perl copied successfully for bash environment
 )
 
+REM Disable symlinks globally to avoid Windows permission issues
+echo Disabling symlinks in Bazel configuration...
+powershell -Command "(Get-Content '.bazelrc') -replace '--windows_enable_symlinks', '--nowindows_enable_symlinks' | Set-Content '.bazelrc'"
+
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --nobuild_runfile_links' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Run the upstream build script
