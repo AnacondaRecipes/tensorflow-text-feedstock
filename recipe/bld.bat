@@ -87,7 +87,7 @@ if not exist "C:\tmp\bazel" mkdir "C:\tmp\bazel"
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --output_user_root=C:/tmp/bazel' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --output_user_root C:/tmp/bazel' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Run the upstream build script
