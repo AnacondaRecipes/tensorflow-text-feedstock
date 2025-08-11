@@ -47,8 +47,13 @@ echo Allowing upstream script to install tensorflow==2.18.0 from PyPI
 set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
 set "PIP_NO_INDEX=False"
 
-REM Dependencies (perl, wheel) should be available from meta.yaml build requirements
-REM promise package will be tested - if needed, Bazel will install it via pip during requirements.update
+REM Pre-install promise package to resolve circular dependency in Bazel requirements.update
+echo Installing promise via pip...
+pip install promise
+if errorlevel 1 (
+    echo ERROR: Failed to install promise via pip
+    exit 1
+)
 set "PIP_USE_PEP517=false"
 set "PIP_NO_BUILD_ISOLATION=true"
 set "PIP_DISABLE_PIP_VERSION_CHECK=1"
