@@ -47,7 +47,7 @@ echo Allowing upstream script to install tensorflow==2.18.0 from PyPI
 set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
 set "PIP_NO_INDEX=False"
 
-REM Pre-install promise package to resolve circular dependency in Bazel requirements.update
+REM Install promise package to resolve circular dependency in Bazel requirements.update
 echo Installing promise via pip...
 pip install promise
 if errorlevel 1 (
@@ -63,6 +63,22 @@ for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepac
 
 REM Copy bazel for bash environment
 copy "%BUILD_PREFIX%\Library\bin\bazel.exe" "%BUILD_PREFIX%\bin\bazel" >nul
+
+REM Copy perl for bash environment (TensorFlow flatbuffer processing requires perl)
+echo Copying perl.exe for bash environment...
+copy "%BUILD_PREFIX%\Library\bin\perl.exe" "%BUILD_PREFIX%\bin\perl" >nul 2>&1
+if errorlevel 1 (
+    echo WARNING: Could not copy perl.exe - checking if perl is available...
+    where perl >nul 2>&1
+    if errorlevel 1 (
+        echo ERROR: perl not found and could not be copied for bash environment
+        exit 1
+    ) else (
+        echo perl found in system PATH
+    )
+) else (
+    echo perl copied successfully for bash environment
+)
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
