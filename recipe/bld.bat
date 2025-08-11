@@ -48,7 +48,19 @@ set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
 set "PIP_NO_INDEX=False"
 
 REM Install dependencies needed for TensorFlow Text build
-conda install -y perl wheel promise
+echo Installing perl and wheel via conda...
+conda install -y perl wheel
+if errorlevel 1 (
+    echo ERROR: Failed to install perl and wheel via conda
+    exit 1
+)
+
+echo Installing promise via pip...
+pip install promise
+if errorlevel 1 (
+    echo ERROR: Failed to install promise via pip
+    exit 1
+)
 set "PIP_USE_PEP517=false"
 set "PIP_NO_BUILD_ISOLATION=true"
 set "PIP_DISABLE_PIP_VERSION_CHECK=1"
