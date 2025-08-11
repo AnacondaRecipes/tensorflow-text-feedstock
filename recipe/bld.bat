@@ -47,20 +47,8 @@ echo Allowing upstream script to install tensorflow==2.18.0 from PyPI
 set "PIP_NO_INDEX_BACKUP=%PIP_NO_INDEX%"
 set "PIP_NO_INDEX=False"
 
-REM Install dependencies needed for TensorFlow Text build
-echo Installing perl and wheel via conda...
-conda install -y perl wheel
-if errorlevel 1 (
-    echo ERROR: Failed to install perl and wheel via conda
-    exit 1
-)
-
-echo Installing promise via pip...
-pip install promise
-if errorlevel 1 (
-    echo ERROR: Failed to install promise via pip
-    exit 1
-)
+REM Dependencies (perl, wheel) should be available from meta.yaml build requirements
+REM promise package will be tested - if needed, Bazel will install it via pip during requirements.update
 set "PIP_USE_PEP517=false"
 set "PIP_NO_BUILD_ISOLATION=true"
 set "PIP_DISABLE_PIP_VERSION_CHECK=1"
@@ -72,17 +60,22 @@ REM Copy bazel for bash environment
 copy "%BUILD_PREFIX%\Library\bin\bazel.exe" "%BUILD_PREFIX%\bin\bazel" >nul
 
 REM Apply essential patches directly
+echo Applying patches to upstream scripts...
 powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Run the upstream build script
+echo Starting upstream build process...
 bash oss_scripts/run_build.sh
 if errorlevel 1 exit 1
+echo Upstream build completed successfully!
 
 REM Restore PIP_NO_INDEX and install the wheel immediately
+echo Installing built wheel into conda environment...
 set "PIP_NO_INDEX=%PIP_NO_INDEX_BACKUP%"
 %PYTHON% -m pip install tensorflow_text-*.whl --no-deps --no-build-isolation
 if errorlevel 1 exit 1
+echo Wheel installation completed successfully!
 
 REM run the tests here since the build and host requirements are necessary for building
 REM tensorflow-datasets temporarily disabled due to protobuf conflicts with TF 2.18.1
