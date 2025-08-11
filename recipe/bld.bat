@@ -80,9 +80,10 @@ if errorlevel 1 (
     echo perl copied successfully for bash environment
 )
 
-REM Disable symlinks globally to avoid Windows permission issues
-echo Disabling symlinks in Bazel configuration...
-powershell -Command "(Get-Content '.bazelrc') -replace '--windows_enable_symlinks', '--nowindows_enable_symlinks' | Set-Content '.bazelrc'"
+REM Create .bazelrc to disable symlinks globally to avoid Windows permission issues
+echo Creating .bazelrc to disable symlinks...
+echo startup --nowindows_enable_symlinks > .bazelrc
+echo common --nowindows_enable_symlinks >> .bazelrc
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
