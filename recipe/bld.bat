@@ -83,11 +83,11 @@ if errorlevel 1 (
 REM Create shorter Bazel output directory to avoid Windows long path issues
 echo Creating Bazel output directory to avoid long path issues...
 if not exist "C:\tmp" mkdir "C:\tmp"
-if not exist "C:\tmp\bazel" mkdir "C:\tmp\bazel"
+if not exist "C:\tmp\bazel-out" mkdir "C:\tmp\bazel-out"
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --output_user_root C:/tmp/bazel' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --output_base=C:/tmp/bazel-out' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Run the upstream build script
