@@ -96,53 +96,62 @@ echo build --config=monolithic >> .bazelrc
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going --config=monolithic --define framework_shared_object=false' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'python fix_libraries.py && bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going --config=monolithic --define framework_shared_object=false' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
-REM Handle missing libtensorflow_framework.so.2 file by creating from Windows equivalent
-echo Handling missing shared library file for Windows...
-echo import site > create_so_file.py
-echo import os >> create_so_file.py
-echo import shutil >> create_so_file.py
-echo. >> create_so_file.py
-echo # Find TensorFlow installation >> create_so_file.py
-echo for site_dir in site.getsitepackages(): >> create_so_file.py
-echo     tf_dir = os.path.join(site_dir, 'tensorflow') >> create_so_file.py
-echo     if os.path.exists(tf_dir): >> create_so_file.py
-echo         print(f'Found TensorFlow at: {tf_dir}') >> create_so_file.py
-echo         # Look for actual TensorFlow framework files >> create_so_file.py
-echo         for root, dirs, files in os.walk(tf_dir): >> create_so_file.py
-echo             for file in files: >> create_so_file.py
-echo                 if 'framework' in file.lower() and (file.endswith('.dll') or file.endswith('.so')): >> create_so_file.py
-echo                     print(f'Found framework file: {os.path.join(root, file)}') >> create_so_file.py
-echo         # Create the expected file >> create_so_file.py
-echo         so_target = os.path.join(tf_dir, 'libtensorflow_framework.so.2') >> create_so_file.py
-echo         if not os.path.exists(so_target): >> create_so_file.py
-echo             # Try to find a suitable source >> create_so_file.py
-echo             candidates = [ >> create_so_file.py
-echo                 os.path.join(tf_dir, '_api', 'v2', 'compat', 'v1', 'libtensorflow_framework.so.2'), >> create_so_file.py
-echo                 os.path.join(tf_dir, 'libtensorflow_framework.so'), >> create_so_file.py
-echo                 os.path.join(tf_dir, 'python', '_pywrap_tensorflow_internal.pyd'), >> create_so_file.py
-echo                 os.path.join(tf_dir, 'tensorflow_framework.dll') >> create_so_file.py
-echo             ] >> create_so_file.py
-echo             for candidate in candidates: >> create_so_file.py
-echo                 if os.path.exists(candidate): >> create_so_file.py
-echo                     print(f'Creating {so_target} from {candidate}') >> create_so_file.py
-echo                     shutil.copy2(candidate, so_target) >> create_so_file.py
-echo                     break >> create_so_file.py
-echo             else: >> create_so_file.py
-echo                 # Create an empty placeholder file >> create_so_file.py
-echo                 print(f'Creating empty placeholder: {so_target}') >> create_so_file.py
-echo                 open(so_target, 'a').close() >> create_so_file.py
-echo         break >> create_so_file.py
+REM Create a script to find and fix missing library files after TensorFlow is installed
+echo Creating library fix script...
+echo import site > fix_libraries.py
+echo import os >> fix_libraries.py
+echo import shutil >> fix_libraries.py
+echo import glob >> fix_libraries.py
+echo import time >> fix_libraries.py
+echo. >> fix_libraries.py
+echo def fix_tensorflow_libraries(): >> fix_libraries.py
+echo     """Find all TensorFlow installations and create missing .so.2 files""" >> fix_libraries.py
+echo     tf_locations = [] >> fix_libraries.py
+echo     # Check conda site-packages >> fix_libraries.py
+echo     for site_dir in site.getsitepackages(): >> fix_libraries.py
+echo         tf_dir = os.path.join(site_dir, 'tensorflow') >> fix_libraries.py
+echo         if os.path.exists(tf_dir): >> fix_libraries.py
+echo             tf_locations.append(tf_dir) >> fix_libraries.py
+echo     # Search for bazel workspace tensorflow directories >> fix_libraries.py
+echo     current_dir = os.getcwd() >> fix_libraries.py
+echo     for root, dirs, files in os.walk(current_dir): >> fix_libraries.py
+echo         if 'site-packages' in root and root.endswith('tensorflow'): >> fix_libraries.py
+echo             tf_locations.append(root) >> fix_libraries.py
+echo     tf_locations = list(set(tf_locations)) >> fix_libraries.py
+echo     print(f'Found {len(tf_locations)} TensorFlow installations to fix') >> fix_libraries.py
+echo     for tf_dir in tf_locations: >> fix_libraries.py
+echo         print(f'Processing: {tf_dir}') >> fix_libraries.py
+echo         so_target = os.path.join(tf_dir, 'libtensorflow_framework.so.2') >> fix_libraries.py
+echo         if not os.path.exists(so_target): >> fix_libraries.py
+echo             candidates = [ >> fix_libraries.py
+echo                 os.path.join(tf_dir, 'python', '_pywrap_tensorflow_internal.pyd'), >> fix_libraries.py
+echo                 os.path.join(tf_dir, 'libtensorflow_framework.so'), >> fix_libraries.py
+echo                 os.path.join(tf_dir, 'tensorflow_framework.dll') >> fix_libraries.py
+echo             ] >> fix_libraries.py
+echo             for candidate in candidates: >> fix_libraries.py
+echo                 if os.path.exists(candidate): >> fix_libraries.py
+echo                     print(f'Creating {so_target} from {candidate}') >> fix_libraries.py
+echo                     shutil.copy2(candidate, so_target) >> fix_libraries.py
+echo                     break >> fix_libraries.py
+echo             else: >> fix_libraries.py
+echo                 print(f'Creating empty placeholder: {so_target}') >> fix_libraries.py
+echo                 open(so_target, 'a').close() >> fix_libraries.py
+echo         else: >> fix_libraries.py
+echo             print(f'File already exists: {so_target}') >> fix_libraries.py
+echo     return len(tf_locations) >> fix_libraries.py
+echo. >> fix_libraries.py
+echo # Run initial fix >> fix_libraries.py
+echo fix_tensorflow_libraries() >> fix_libraries.py
 
-python create_so_file.py
+python fix_libraries.py
 if errorlevel 1 (
-    echo WARNING: Could not create libtensorflow_framework.so.2 file
+    echo WARNING: Could not run initial library fix
 ) else (
-    echo Successfully processed shared library creation
+    echo Initial library fix completed
 )
-del create_so_file.py
 
 REM Run the upstream build script
 echo Starting upstream build process...
