@@ -92,10 +92,11 @@ echo common --nowindows_enable_symlinks >> .bazelrc
 echo build --experimental_allow_unresolved_symlinks >> .bazelrc
 echo build --experimental_ignore_unresolved_symlinks >> .bazelrc
 echo build --define framework_shared_object=false >> .bazelrc
+echo build --config=monolithic >> .bazelrc
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going --config=monolithic --define framework_shared_object=false' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Library path issue handled by .bazelrc framework_shared_object=false setting
