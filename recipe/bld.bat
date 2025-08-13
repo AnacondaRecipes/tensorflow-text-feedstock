@@ -101,45 +101,48 @@ powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh'
 
 REM Handle missing libtensorflow_framework.so.2 file by creating from Windows equivalent
 echo Handling missing shared library file for Windows...
-python -c "
-import site
-import os
-import shutil
+echo import site > create_so_file.py
+echo import os >> create_so_file.py
+echo import shutil >> create_so_file.py
+echo. >> create_so_file.py
+echo # Find TensorFlow installation >> create_so_file.py
+echo for site_dir in site.getsitepackages(): >> create_so_file.py
+echo     tf_dir = os.path.join(site_dir, 'tensorflow') >> create_so_file.py
+echo     if os.path.exists(tf_dir): >> create_so_file.py
+echo         print(f'Found TensorFlow at: {tf_dir}') >> create_so_file.py
+echo         # Look for actual TensorFlow framework files >> create_so_file.py
+echo         for root, dirs, files in os.walk(tf_dir): >> create_so_file.py
+echo             for file in files: >> create_so_file.py
+echo                 if 'framework' in file.lower() and (file.endswith('.dll') or file.endswith('.so')): >> create_so_file.py
+echo                     print(f'Found framework file: {os.path.join(root, file)}') >> create_so_file.py
+echo         # Create the expected file >> create_so_file.py
+echo         so_target = os.path.join(tf_dir, 'libtensorflow_framework.so.2') >> create_so_file.py
+echo         if not os.path.exists(so_target): >> create_so_file.py
+echo             # Try to find a suitable source >> create_so_file.py
+echo             candidates = [ >> create_so_file.py
+echo                 os.path.join(tf_dir, '_api', 'v2', 'compat', 'v1', 'libtensorflow_framework.so.2'), >> create_so_file.py
+echo                 os.path.join(tf_dir, 'libtensorflow_framework.so'), >> create_so_file.py
+echo                 os.path.join(tf_dir, 'python', '_pywrap_tensorflow_internal.pyd'), >> create_so_file.py
+echo                 os.path.join(tf_dir, 'tensorflow_framework.dll') >> create_so_file.py
+echo             ] >> create_so_file.py
+echo             for candidate in candidates: >> create_so_file.py
+echo                 if os.path.exists(candidate): >> create_so_file.py
+echo                     print(f'Creating {so_target} from {candidate}') >> create_so_file.py
+echo                     shutil.copy2(candidate, so_target) >> create_so_file.py
+echo                     break >> create_so_file.py
+echo             else: >> create_so_file.py
+echo                 # Create an empty placeholder file >> create_so_file.py
+echo                 print(f'Creating empty placeholder: {so_target}') >> create_so_file.py
+echo                 open(so_target, 'a').close() >> create_so_file.py
+echo         break >> create_so_file.py
 
-# Find TensorFlow installation
-for site_dir in site.getsitepackages():
-    tf_dir = os.path.join(site_dir, 'tensorflow')
-    if os.path.exists(tf_dir):
-        print(f'Found TensorFlow at: {tf_dir}')
-
-        # Look for actual TensorFlow framework files
-        for root, dirs, files in os.walk(tf_dir):
-            for file in files:
-                if 'framework' in file.lower() and (file.endswith('.dll') or file.endswith('.so')):
-                    print(f'Found framework file: {os.path.join(root, file)}')
-
-        # Create the expected file
-        so_target = os.path.join(tf_dir, 'libtensorflow_framework.so.2')
-        if not os.path.exists(so_target):
-            # Try to find a suitable source
-            candidates = [
-                os.path.join(tf_dir, '_api', 'v2', 'compat', 'v1', 'libtensorflow_framework.so.2'),
-                os.path.join(tf_dir, 'libtensorflow_framework.so'),
-                os.path.join(tf_dir, 'python', '_pywrap_tensorflow_internal.pyd'),
-                os.path.join(tf_dir, 'tensorflow_framework.dll')
-            ]
-
-            for candidate in candidates:
-                if os.path.exists(candidate):
-                    print(f'Creating {so_target} from {candidate}')
-                    shutil.copy2(candidate, so_target)
-                    break
-            else:
-                # Create an empty placeholder file
-                print(f'Creating empty placeholder: {so_target}')
-                open(so_target, 'a').close()
-        break
-"
+python create_so_file.py
+if errorlevel 1 (
+    echo WARNING: Could not create libtensorflow_framework.so.2 file
+) else (
+    echo Successfully processed shared library creation
+)
+del create_so_file.py
 
 REM Run the upstream build script
 echo Starting upstream build process...
