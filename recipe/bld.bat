@@ -62,7 +62,12 @@ REM Set PYTHONPATH for Bazel subprocesses
 for /f "delims=" %%i in ('python -c "import site; print(';'.join(site.getsitepackages()))"') do set "PYTHONPATH=%%i"
 
 REM Copy bazel for bash environment
+echo Creating simple bazel copy for bash environment...
 copy "%BUILD_PREFIX%\Library\bin\bazel.exe" "%BUILD_PREFIX%\bin\bazel" >nul
+if errorlevel 1 (
+    echo ERROR: Could not copy bazel.exe to bin directory
+    exit 1
+)
 
 REM Copy perl for bash environment (TensorFlow flatbuffer processing requires perl)
 echo Copying perl.exe for bash environment...
@@ -93,9 +98,7 @@ echo Applying patches to upstream scripts...
 powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
-REM Fix Linux library references for Windows in all BUILD files
-echo Fixing Linux library references for Windows...
-powershell -Command "Get-ChildItem -Recurse -Filter 'BUILD*' | ForEach-Object { (Get-Content $_.FullName) -replace 'libtensorflow_framework\.so\.2', 'tensorflow_framework.dll' | Set-Content $_.FullName }"
+REM Library path issue handled by .bazelrc framework_shared_object=false setting
 
 REM Run the upstream build script
 echo Starting upstream build process...
