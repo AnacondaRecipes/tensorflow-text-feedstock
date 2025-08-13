@@ -84,6 +84,9 @@ REM Create .bazelrc to disable symlinks globally to avoid Windows permission iss
 echo Creating .bazelrc to disable symlinks...
 echo startup --nowindows_enable_symlinks > .bazelrc
 echo common --nowindows_enable_symlinks >> .bazelrc
+echo build --experimental_allow_unresolved_symlinks >> .bazelrc
+echo build --experimental_ignore_unresolved_symlinks >> .bazelrc
+echo build --define framework_shared_object=false >> .bazelrc
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
