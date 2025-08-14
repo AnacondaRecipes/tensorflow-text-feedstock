@@ -162,9 +162,9 @@ echo import glob >> comprehensive_fix.py
 echo. >> comprehensive_fix.py
 echo # Source file from conda environment >> comprehensive_fix.py
 echo source_candidates = [ >> comprehensive_fix.py
+echo     r'%PREFIX%\Lib\site-packages\tensorflow\tensorflow_framework.dll', >> comprehensive_fix.py
 echo     r'%PREFIX%\Lib\site-packages\tensorflow\python\_pywrap_tensorflow_internal.pyd', >> comprehensive_fix.py
-echo     r'%PREFIX%\Lib\site-packages\tensorflow\libtensorflow_framework.so', >> comprehensive_fix.py
-echo     r'%PREFIX%\Lib\site-packages\tensorflow\tensorflow_framework.dll' >> comprehensive_fix.py
+echo     r'%PREFIX%\Lib\site-packages\tensorflow\libtensorflow_framework.so' >> comprehensive_fix.py
 echo ] >> comprehensive_fix.py
 echo source_file = None >> comprehensive_fix.py
 echo for candidate in source_candidates: >> comprehensive_fix.py
@@ -177,29 +177,27 @@ echo if not source_file: >> comprehensive_fix.py
 echo     print('No source file found - creating empty placeholder') >> comprehensive_fix.py
 echo     source_file = None >> comprehensive_fix.py
 echo. >> comprehensive_fix.py
-echo # Create in all possible Bazel locations >> comprehensive_fix.py
-echo target_patterns = [ >> comprehensive_fix.py
-echo     'bazel-*/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2', >> comprehensive_fix.py
-echo     '*/bazel-*/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2', >> comprehensive_fix.py
-echo     'bazel-out/*/bin/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2', >> comprehensive_fix.py
-echo     '*/bazel-out/*/bin/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2', >> comprehensive_fix.py
-echo     'bazel-bin/*/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2', >> comprehensive_fix.py
-echo     '*/bazel-bin/*/external/pypi_tensorflow/site-packages/tensorflow/libtensorflow_framework.so.2' >> comprehensive_fix.py
+echo # Create standard Bazel external repository structure >> comprehensive_fix.py
+echo bazel_external_paths = [ >> comprehensive_fix.py
+echo     'external/pypi_tensorflow/site-packages/tensorflow', >> comprehensive_fix.py
+echo     'bazel-bin/external/pypi_tensorflow/site-packages/tensorflow', >> comprehensive_fix.py
+echo     'bazel-out/x64_windows-opt/bin/external/pypi_tensorflow/site-packages/tensorflow' >> comprehensive_fix.py
 echo ] >> comprehensive_fix.py
 echo. >> comprehensive_fix.py
 echo created_count = 0 >> comprehensive_fix.py
-echo for pattern in target_patterns: >> comprehensive_fix.py
-echo     matches = glob.glob(pattern, recursive=True) >> comprehensive_fix.py
-echo     for match in matches: >> comprehensive_fix.py
-echo         if not os.path.exists(match): >> comprehensive_fix.py
-echo             os.makedirs(os.path.dirname(match), exist_ok=True) >> comprehensive_fix.py
-echo             if source_file: >> comprehensive_fix.py
-echo                 shutil.copy2(source_file, match) >> comprehensive_fix.py
-echo                 print(f'Created: {match}') >> comprehensive_fix.py
-echo             else: >> comprehensive_fix.py
-echo                 open(match, 'a').close() >> comprehensive_fix.py
-echo                 print(f'Created placeholder: {match}') >> comprehensive_fix.py
-echo             created_count += 1 >> comprehensive_fix.py
+echo for path in bazel_external_paths: >> comprehensive_fix.py
+echo     target_file = os.path.join(path, 'libtensorflow_framework.so.2') >> comprehensive_fix.py
+echo     if not os.path.exists(target_file): >> comprehensive_fix.py
+echo         os.makedirs(path, exist_ok=True) >> comprehensive_fix.py
+echo         if source_file: >> comprehensive_fix.py
+echo             shutil.copy2(source_file, target_file) >> comprehensive_fix.py
+echo             print(f'Created: {target_file}') >> comprehensive_fix.py
+echo         else: >> comprehensive_fix.py
+echo             open(target_file, 'a').close() >> comprehensive_fix.py
+echo             print(f'Created placeholder: {target_file}') >> comprehensive_fix.py
+echo         created_count += 1 >> comprehensive_fix.py
+echo     else: >> comprehensive_fix.py
+echo         print(f'Already exists: {target_file}') >> comprehensive_fix.py
 echo. >> comprehensive_fix.py
 echo print(f'Comprehensive fix completed - created {created_count} files') >> comprehensive_fix.py
 
