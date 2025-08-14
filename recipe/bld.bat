@@ -96,7 +96,8 @@ echo build --config=monolithic >> .bazelrc
 
 REM Apply essential patches directly
 echo Applying patches to upstream scripts...
-powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'python fix_libraries.py && bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going --config=monolithic --define framework_shared_object=false' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run //oss_scripts/pip_package:requirements.update --', 'bazel run //oss_scripts/pip_package:requirements.update -- $@\necho \"Running library fix after requirements update...\"\npython ../../fix_libraries.py\necho \"Library fix completed\"' | Set-Content 'oss_scripts/run_build.sh'"
+powershell -Command "(Get-Content 'oss_scripts/run_build.sh') -replace 'bazel run \$\{BUILD_ARGS\[\@\]\} --enable_runfiles', 'bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --keep_going --config=monolithic --define framework_shared_object=false' | Set-Content 'oss_scripts/run_build.sh'"
 powershell -Command "(Get-Content 'oss_scripts/pip_package/build_pip_package.sh') -replace '\$installed_python setup\.py bdist_wheel --universal \$plat_name', '$installed_python setup.py bdist_wheel --universal #$plat_name' | Set-Content 'oss_scripts/pip_package/build_pip_package.sh'"
 
 REM Create a script to find and fix missing library files after TensorFlow is installed
