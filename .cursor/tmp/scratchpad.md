@@ -179,3 +179,34 @@ The ONLY failing dependency is setuptools==70.0.0
 2. Create a targeted patch to relax just this constraint
 3. Or find a way to completely bypass the requirements.update step
 
+
+
+## 🔄 STRATEGY PIVOT: Let prepare_tf_dep.sh Handle Repository Setup
+
+### 💡 NEW APPROACH: Work WITH the System, Not Around It
+Instead of manually creating symlinks, **re-enable the official mechanism**:
+
+- ❌ **Manual symlink** creation (external approach)
+- ✅ **Re-enable prepare_tf_dep.sh** (internal approach)
+- ✅ **Let TensorFlow Text's build system** set up @pypi_tensorflow properly
+- ✅ **Our dependency cleaning** should prevent the conflicts
+
+### 🔧 CHANGES MADE:
+1. **Disabled 0004-skip-pull-tf-dependencies.patch** - let prepare_tf_dep.sh run
+2. **Removed manual symlink creation** from build.sh  
+3. **Keep dependency removal** - prevents setuptools/tensorflow/tf-keras conflicts
+4. **Trust the upstream process** with cleaned requirements
+
+### 🎯 HYPOTHESIS: 
+Since we've **eliminated all conflicting dependencies** from requirements files:
+- ✅ **prepare_tf_dep.sh should run successfully** (no more pip conflicts)
+- ✅ **@pypi_tensorflow repository** will be set up properly by upstream script
+- ✅ **BUILD files** will find the repository they expect
+- ✅ **Compilation proceeds** to TensorFlow Text build phase
+
+### 🚀 TENTH LINUX BUILD ATTEMPT READY!
+
+This leverages our successful dependency resolution with the **official repository setup mechanism**. Should be more robust than manual workarounds!
+
+**Best of both worlds: clean dependencies + official setup process** 🎯��
+

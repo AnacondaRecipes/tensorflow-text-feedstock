@@ -12,7 +12,7 @@ source:
     # Keeping all patches for potential future use, but applying selectively
     # - 0002-make-other-minor-adjustments.patch  # May be needed for some platforms
     # - 0003-do-not-check-for-bazel-version.patch  # May be needed for some platforms
-    - 0004-skip-pull-tf-dependencies.patch  # [not win]  # Skip TF dependency resolution - we have TF via conda
+    # - 0004-skip-pull-tf-dependencies.patch  # [not win]  # TEMPORARILY DISABLED - let prepare_tf_dep.sh run with cleaned requirements
     # - 0008-fix-windows-library-paths.patch  # Windows-specific, but Windows builds currently skipped
     - 0006-clean-up-after-bazel-temp-files.patch  # [linux]
 
