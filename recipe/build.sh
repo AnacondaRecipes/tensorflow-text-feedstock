@@ -2,36 +2,50 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
-# Fix dependency version issues - use flexible tensorflow version that's PyPI-compatible
-# Remove problematic constraints but keep tensorflow reference for @pypi_tensorflow repository setup
-CONDA_TF_VERSION=$(python -c "import tensorflow; print(tensorflow.__version__)")
-# Use exact conda tensorflow version - confirmed available on PyPI at https://pypi.org/project/tensorflow/2.18.1/
-PYPI_TF_VERSION="$CONDA_TF_VERSION"
-echo "Using conda TensorFlow version: $CONDA_TF_VERSION"
-echo "Using PyPI-compatible TensorFlow version: $PYPI_TF_VERSION"
+# Build environment has no PyPI access, but Bazel still runs requirements.update directly
+# Remove problematic dependencies that can't be resolved from PyPI
+echo "Removing PyPI-inaccessible dependencies from requirements files..."
 
-if [ -f "release_or_nightly/requirements.in" ]; then
-    echo "Fixing dependency versions in requirements.in..."
-    sed -i '/setuptools==70.0.0/d' release_or_nightly/requirements.in || true
-    sed -i "s/tensorflow.*/tensorflow==$PYPI_TF_VERSION/g" release_or_nightly/requirements.in || true
-    sed -i '/tf-keras/d' release_or_nightly/requirements.in || true
-fi
-
-# Also patch any other requirements files that might contain problematic constraints
+# Remove PyPI-inaccessible constraints that cause failures
 find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
-    if grep -q "setuptools==70.0.0\|tensorflow\|tf-keras" "$file" 2>/dev/null; then
-        echo "Fixing dependency versions in $file..."
-        sed -i '/setuptools==70.0.0/d' "$file" || true
-        sed -i "s/tensorflow.*/tensorflow==$PYPI_TF_VERSION/g" "$file" || true
-        sed -i '/tf-keras/d' "$file" || true
+    if [ -f "$file" ]; then
+        # Check for and remove problematic dependencies
+        if grep -q "setuptools==70.0.0\|tensorflow\|tf-keras" "$file" 2>/dev/null; then
+            echo "Removing PyPI-inaccessible dependencies from $file"
+            sed -i '/setuptools==70.0.0/d' "$file" || true
+            sed -i '/tensorflow/d' "$file" || true
+            sed -i '/tf-keras/d' "$file" || true
+        fi
     fi
 done
 
-# Let prepare_tf_dep.sh run to set up @pypi_tensorflow repository properly
-# Our dependency removal should prevent the pip conflicts that were blocking it before
-echo "Allowing prepare_tf_dep.sh to run with cleaned requirements files..."
+echo "Using conda-provided dependencies for compilation"
 
-./oss_scripts/run_build.sh
+# Create a minimal @pypi_tensorflow repository for Bazel since we removed tensorflow from requirements
+# but BUILD files still expect this repository to exist
+echo "Creating @pypi_tensorflow repository stub for Bazel..."
+mkdir -p external/pypi_tensorflow/site-packages
+
+# Get the real tensorflow path (not keras redirect)
+TENSORFLOW_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
+ln -sf "$TENSORFLOW_PATH" external/pypi_tensorflow/site-packages/tensorflow
+echo "Created: external/pypi_tensorflow/site-packages/tensorflow -> $TENSORFLOW_PATH"
+
+# Create a minimal BUILD file for the repository
+cat > external/pypi_tensorflow/BUILD << 'EOF'
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "tensorflow_pkg",
+    srcs = glob(["site-packages/tensorflow/**"]),
+)
+EOF
+echo "Created: external/pypi_tensorflow/BUILD"
+
+# Skip the problematic tensorflow_build_info target that requires @pypi_tensorflow
+# and build the main pip package directly
+echo "Building TensorFlow Text pip package directly..."
+bazel run //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
 
 $PYTHON -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
 
