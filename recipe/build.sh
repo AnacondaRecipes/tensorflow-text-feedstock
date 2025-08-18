@@ -8,14 +8,16 @@ if [ -f "release_or_nightly/requirements.in" ]; then
     echo "Removing conda-provided dependencies from requirements.in..."
     sed -i '/setuptools==70.0.0/d' release_or_nightly/requirements.in || true
     sed -i '/tensorflow/d' release_or_nightly/requirements.in || true
+    sed -i '/tf-keras/d' release_or_nightly/requirements.in || true
 fi
 
 # Also patch any other requirements files that might contain problematic constraints
 find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
-    if grep -q "setuptools==70.0.0\|tensorflow" "$file" 2>/dev/null; then
+    if grep -q "setuptools==70.0.0\|tensorflow\|tf-keras" "$file" 2>/dev/null; then
         echo "Removing conda-provided dependencies from $file..."
         sed -i '/setuptools==70.0.0/d' "$file" || true
         sed -i '/tensorflow/d' "$file" || true
+        sed -i '/tf-keras/d' "$file" || true
     fi
 done
 
