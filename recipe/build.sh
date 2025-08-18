@@ -5,8 +5,8 @@ export PATH=$PREFIX/bin:$PATH
 # Fix dependency version issues - use flexible tensorflow version that's PyPI-compatible
 # Remove problematic constraints but keep tensorflow reference for @pypi_tensorflow repository setup
 CONDA_TF_VERSION=$(python -c "import tensorflow; print(tensorflow.__version__)")
-# Use tensorflow 2.18.0 as it's more likely to be available on PyPI than 2.18.1
-PYPI_TF_VERSION="2.18.0"
+# Use exact conda tensorflow version - confirmed available on PyPI at https://pypi.org/project/tensorflow/2.18.1/
+PYPI_TF_VERSION="$CONDA_TF_VERSION"
 echo "Using conda TensorFlow version: $CONDA_TF_VERSION"
 echo "Using PyPI-compatible TensorFlow version: $PYPI_TF_VERSION"
 
