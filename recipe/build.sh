@@ -21,6 +21,12 @@ find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; 
     fi
 done
 
+# Create a Bazel workspace symlink so @pypi_tensorflow can find conda-provided TensorFlow
+TENSORFLOW_PATH=$(python -c "import tensorflow; print(tensorflow.__path__[0])")
+mkdir -p external/pypi_tensorflow/site-packages
+ln -sf "$TENSORFLOW_PATH" external/pypi_tensorflow/site-packages/tensorflow
+echo "Created Bazel workspace link: external/pypi_tensorflow/site-packages/tensorflow -> $TENSORFLOW_PATH"
+
 ./oss_scripts/run_build.sh
 
 $PYTHON -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
