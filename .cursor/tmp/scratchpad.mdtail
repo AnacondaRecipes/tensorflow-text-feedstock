@@ -1,0 +1,26 @@
+
+
+## 🎯 FINAL COMPREHENSIVE APPROACH
+
+### 🔧 Strategy:
+**Direct Requirements File Modification** - since environment variables and patches to shell scripts didn't work, now directly modifying the requirements files before the build starts.
+
+### 📋 What the New build.sh Does:
+1. ✅ **Searches for requirements.in files** in the source tree
+2. ✅ **Replaces setuptools==70.0.0** with **setuptools>=78.0.0,<80.0.0**
+3. ✅ **Uses flexible version constraint** that includes the conda version (78.1.1)
+4. ✅ **Scans ALL requirements files** to catch any variations
+
+### 🎯 Expected Result:
+- The requirements.update step should now find a compatible setuptools version
+- Build should proceed past the dependency resolution phase
+- TensorFlow Text compilation should begin
+
+### 📊 This Should Finally Work Because:
+- ✅ **Addresses root cause** - the exact version constraint that's failing
+- ✅ **Uses existing conda version** - setuptools 78.1.1 satisfies >=78.0.0,<80.0.0  
+- ✅ **Applied before Bazel starts** - modifications happen before any build steps
+- ✅ **Comprehensive coverage** - finds and patches ANY requirements file with this constraint
+
+**Ready for fifth Linux build attempt-A 3 -B 3 requirements.in|requirements_lock /Users/scrass/anaconda/logs/lin.txt* 🚀
+ -100 /Users/scrass/anaconda/logs/lin.txt

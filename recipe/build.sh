@@ -2,17 +2,18 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
-# Fix setuptools version issue by modifying requirements files before build
+# Fix setuptools version issue by removing setuptools requirement entirely
+# since we already have it from conda and Bazel's isolated environment can't access it
 if [ -f "release_or_nightly/requirements.in" ]; then
-    echo "Patching requirements.in to use compatible setuptools version..."
-    sed -i 's/setuptools==70.0.0/setuptools>=78.0.0,<80.0.0/' release_or_nightly/requirements.in || true
+    echo "Removing setuptools requirement from requirements.in (using conda version)..."
+    sed -i '/setuptools==70.0.0/d' release_or_nightly/requirements.in || true
 fi
 
 # Also patch any other requirements files that might contain the problematic constraint
 find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
     if grep -q "setuptools==70.0.0" "$file" 2>/dev/null; then
-        echo "Patching $file to use compatible setuptools version..."
-        sed -i 's/setuptools==70.0.0/setuptools>=78.0.0,<80.0.0/' "$file" || true
+        echo "Removing setuptools requirement from $file (using conda version)..."
+        sed -i '/setuptools==70.0.0/d' "$file" || true
     fi
 done
 
