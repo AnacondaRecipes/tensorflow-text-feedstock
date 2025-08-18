@@ -2,21 +2,24 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
-# Fix dependency version issues by removing requirements that conda already provides
-# since we already have them from conda and Bazel's isolated environment can't access them
+# Fix dependency version issues by using conda-compatible versions
+# Remove problematic constraints but keep tensorflow reference for @pypi_tensorflow repository setup
+CONDA_TF_VERSION=$(python -c "import tensorflow; print(tensorflow.__version__)")
+echo "Using conda TensorFlow version: $CONDA_TF_VERSION"
+
 if [ -f "release_or_nightly/requirements.in" ]; then
-    echo "Removing conda-provided dependencies from requirements.in..."
+    echo "Fixing dependency versions in requirements.in..."
     sed -i '/setuptools==70.0.0/d' release_or_nightly/requirements.in || true
-    sed -i '/tensorflow/d' release_or_nightly/requirements.in || true
+    sed -i "s/tensorflow.*/tensorflow==$CONDA_TF_VERSION/g" release_or_nightly/requirements.in || true
     sed -i '/tf-keras/d' release_or_nightly/requirements.in || true
 fi
 
 # Also patch any other requirements files that might contain problematic constraints
 find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
     if grep -q "setuptools==70.0.0\|tensorflow\|tf-keras" "$file" 2>/dev/null; then
-        echo "Removing conda-provided dependencies from $file..."
+        echo "Fixing dependency versions in $file..."
         sed -i '/setuptools==70.0.0/d' "$file" || true
-        sed -i '/tensorflow/d' "$file" || true
+        sed -i "s/tensorflow.*/tensorflow==$CONDA_TF_VERSION/g" "$file" || true
         sed -i '/tf-keras/d' "$file" || true
     fi
 done

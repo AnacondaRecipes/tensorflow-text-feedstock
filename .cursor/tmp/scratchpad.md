@@ -210,3 +210,35 @@ This leverages our successful dependency resolution with the **official reposito
 
 **Best of both worlds: clean dependencies + official setup process** 🎯��
 
+
+
+## 🔧 STRATEGY REFINEMENT: Version Replacement Instead of Removal
+
+### 💡 ROOT CAUSE ANALYSIS:
+The issue is that **prepare_tf_dep.sh expects TensorFlow in requirements** to set up @pypi_tensorflow repository. When we removed it entirely, the repository wasn't created.
+
+### 🔄 NEW HYBRID APPROACH:
+Instead of **removing** tensorflow dependencies, **replace versions** with conda-compatible ones:
+
+- ❌ ~~Remove tensorflow entirely~~ (breaks @pypi_tensorflow repository setup)
+- ✅ **Keep tensorflow reference** in requirements 
+- ✅ **Replace with conda version** (e.g., tensorflow==2.18.1)
+- ✅ **Remove setuptools/tf-keras** (still problematic)
+- ✅ **Let prepare_tf_dep.sh** set up @pypi_tensorflow with our version
+
+### 🎯 EXPECTED OUTCOME:
+1. ✅ **prepare_tf_dep.sh finds tensorflow** in requirements 
+2. ✅ **Sets up @pypi_tensorflow repository** properly
+3. ✅ **Uses conda-provided version** (2.18.1) instead of conflicting PyPI version
+4. ✅ **BUILD files find @pypi_tensorflow** repository as expected
+5. ✅ **Compilation proceeds** to TensorFlow Text build phase
+
+### 📊 SMART COMPROMISE:
+- ✅ **Keep enough requirements** for repository setup
+- ✅ **Use conda versions** to prevent conflicts 
+- ✅ **Work with the system** instead of fighting it
+
+### 🚀 ELEVENTH LINUX BUILD ATTEMPT READY!
+
+This should finally bridge conda dependencies with Bazel's repository expectations! 🎯🔧
+
