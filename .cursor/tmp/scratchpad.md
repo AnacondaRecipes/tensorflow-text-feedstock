@@ -115,3 +115,25 @@ User feedback:
 ### �� Next Step:
 Ready for second Linux build attempt with fixed patch file.
 
+
+
+## 🐧 LINUX BUILD - SECOND ATTEMPT ANALYSIS
+
+### ✅ Major Progress:
+1. Patch fix successful - 0006-clean-up-after-bazel-temp-files.patch applies cleanly
+2. Environment setup complete - both host and build environments created
+3. Source extraction successful - TensorFlow Text v2.18.1 downloaded
+4. Bazel initialization successful - server started and workspace loaded  
+5. Build system detection working - Linux ARM64 platform detected
+6. TensorFlow integration working - using installed TensorFlow
+
+### ❌ Current Issue: setuptools Version Conflict
+- Bazel requirements.update trying to pin setuptools==70.0.0
+- Conda environment has setuptools 78.1.1 installed
+- Bazel's isolated pip environment can't find exact version 70.0.0
+
+### 🔧 Potential Solutions:
+1. Skip or patch the requirements.update step (may be Windows-specific)
+2. Add setuptools version constraint to meta.yaml
+3. Use one of the commented-out patches that might skip this step
+
