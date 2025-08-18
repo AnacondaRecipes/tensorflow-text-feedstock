@@ -2,6 +2,11 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
+# Skip the problematic requirements.update step by setting environment variables
+# that tell the build system to use existing packages
+export SKIP_REQUIREMENTS_UPDATE=1
+export USE_SYSTEM_PACKAGES=1
+
 ./oss_scripts/run_build.sh
 
 $PYTHON -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation

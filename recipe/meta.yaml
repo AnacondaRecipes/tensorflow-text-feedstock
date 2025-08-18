@@ -43,6 +43,7 @@ requirements:
     - bazel
     - perl  # [not win]  # Required for TensorFlow build process
     - git  # [not win]
+    # setuptools version issue: TF Text requires 70.0.0 but it's not available in conda
   host:
     - python
     - pip

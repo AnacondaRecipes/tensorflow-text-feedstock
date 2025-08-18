@@ -137,3 +137,45 @@ Ready for second Linux build attempt with fixed patch file.
 2. Add setuptools version constraint to meta.yaml
 3. Use one of the commented-out patches that might skip this step
 
+
+
+## 🔍 DEEPER ANALYSIS - Requirements Update Still Running
+
+### ✅ What We Know:
+1. Both patches applied successfully (confirmed by RA-MD1LOVE status)
+2. 0004-skip-pull-tf-dependencies.patch should comment out prepare_tf_dep.sh
+3. But requirements.update target is STILL being executed before main build
+
+### 🤔 The Issue:
+The requirements.update is being run by Bazel BEFORE the shell scripts even start.
+This suggests it's part of the build configuration, not the shell scripts.
+
+### 📊 Evidence from Log:
+- 'bazel run //oss_scripts/pip_package:requirements.update' is executing
+- This happens BEFORE oss_scripts/run_build.sh runs
+- The patch only affects the shell scripts, not the Bazel build configuration
+
+### 🔧 Possible Solutions:
+1. Check if requirements.update is called directly from build.sh
+2. Look for Bazel build configuration that triggers this
+3. May need to modify the Bazel BUILD files directly (not just shell scripts)
+
+
+
+## 💡 NEW STRATEGY: Target the Specific setuptools Issue
+
+### 🎯 Key Insight:
+The ONLY failing dependency is setuptools==70.0.0
+- All other dependencies resolve successfully  
+- The issue is one specific version constraint
+
+### 🔧 Potential Solutions:
+1. **Patch the requirements file** to use a compatible setuptools version
+2. **Override the setuptools version** in the build environment
+3. **Skip the requirements.update step entirely** if it's not critical
+
+### 📍 Next Steps:
+1. Look at what files define the setuptools==70.0.0 requirement
+2. Create a targeted patch to relax just this constraint
+3. Or find a way to completely bypass the requirements.update step
+

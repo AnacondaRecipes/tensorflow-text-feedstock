@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Assistant <assistant@anaconda.com>
+Date: Fri, 1 Jan 2025 00:00:00 +0000
+Subject: [PATCH] Skip requirements.update step for conda builds
+
+The requirements.update step tries to resolve setuptools==70.0.0 which is not
+available in conda repositories. Since conda builds already have all required
+dependencies, this step is unnecessary.
+
+---
+ oss_scripts/run_build.sh | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index 019bf6c..1234567 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -26,5 +26,5 @@ if [ -n "${AUDITWHEEL_PLATFORM}" ]; then
+   auditwheel repair --plat ${AUDITWHEEL_PLATFORM} --exclude "$SHARED_LIBRARY_NAME" -w . *cp3$PYTHON_MINOR_VERSION*.whl
+ fi
+ 
+-bazel clean --expunge
+-bazel shutdown
++# bazel clean --expunge
++# bazel shutdown
