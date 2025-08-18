@@ -2,10 +2,19 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
-# Skip the problematic requirements.update step by setting environment variables
-# that tell the build system to use existing packages
-export SKIP_REQUIREMENTS_UPDATE=1
-export USE_SYSTEM_PACKAGES=1
+# Fix setuptools version issue by modifying requirements files before build
+if [ -f "release_or_nightly/requirements.in" ]; then
+    echo "Patching requirements.in to use compatible setuptools version..."
+    sed -i 's/setuptools==70.0.0/setuptools>=78.0.0,<80.0.0/' release_or_nightly/requirements.in || true
+fi
+
+# Also patch any other requirements files that might contain the problematic constraint
+find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
+    if grep -q "setuptools==70.0.0" "$file" 2>/dev/null; then
+        echo "Patching $file to use compatible setuptools version..."
+        sed -i 's/setuptools==70.0.0/setuptools>=78.0.0,<80.0.0/' "$file" || true
+    fi
+done
 
 ./oss_scripts/run_build.sh
 
