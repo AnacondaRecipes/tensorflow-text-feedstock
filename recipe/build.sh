@@ -2,18 +2,20 @@
 # instead of the host environment python
 export PATH=$PREFIX/bin:$PATH
 
-# Fix setuptools version issue by removing setuptools requirement entirely
-# since we already have it from conda and Bazel's isolated environment can't access it
+# Fix dependency version issues by removing requirements that conda already provides
+# since we already have them from conda and Bazel's isolated environment can't access them
 if [ -f "release_or_nightly/requirements.in" ]; then
-    echo "Removing setuptools requirement from requirements.in (using conda version)..."
+    echo "Removing conda-provided dependencies from requirements.in..."
     sed -i '/setuptools==70.0.0/d' release_or_nightly/requirements.in || true
+    sed -i '/tensorflow/d' release_or_nightly/requirements.in || true
 fi
 
-# Also patch any other requirements files that might contain the problematic constraint
+# Also patch any other requirements files that might contain problematic constraints
 find . -name "requirements*.in" -o -name "requirements*.txt" | while read file; do
-    if grep -q "setuptools==70.0.0" "$file" 2>/dev/null; then
-        echo "Removing setuptools requirement from $file (using conda version)..."
+    if grep -q "setuptools==70.0.0\|tensorflow" "$file" 2>/dev/null; then
+        echo "Removing conda-provided dependencies from $file..."
         sed -i '/setuptools==70.0.0/d' "$file" || true
+        sed -i '/tensorflow/d' "$file" || true
     fi
 done
 
