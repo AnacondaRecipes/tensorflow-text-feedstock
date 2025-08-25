@@ -1,0 +1,96 @@
+{% set version = "2.18.1" %}
+{% set name = "tensorflow-text" %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/tensorflow/text/archive/v{{ version }}.tar.gz
+  sha256: 039f05f422a3ad55289a4897b5427d07cac7efe3943927c3b3c7a593f6123989
+  patches:
+    # Keeping all patches for potential future use, but applying selectively
+    # - patches/0002-make-other-minor-adjustments.patch  # May be needed for some platforms
+    # - patches/0003-do-not-check-for-bazel-version.patch  # May be needed for some platforms
+    - patches/0004-skip-pull-tf-dependencies.patch  # [not win]  # Skip TF dependency resolution - build env has no PyPI access
+    # - patches/0008-fix-windows-library-paths.patch  # Windows-specific, but Windows builds currently skipped
+    - patches/0006-clean-up-after-bazel-temp-files.patch  # [linux]
+    - patches/0001-Add-Android-log-compatibility-headers-for-conda-buil.patch  # [linux]  # Provides android/log.h stub for cross-compilation
+    - patches/0002-Add-TensorFlow-Lite-kernel-shim-headers-for-conda-bu.patch  # [linux]  # TensorFlow Lite kernel operation interfaces
+    - patches/0003-Add-TensorFlow-core-framework-headers-for-conda-buil.patch  # [linux]  # TensorFlow core framework interfaces
+    - patches/0010-Add-tstring-platform-header.patch  # [linux]  # TensorFlow platform tstring header for boise_offset_converter_kernel
+    - patches/0005-Fix-TensorFlow-Text-BUILD-dependencies-for-TensorFlo.patch  # [linux]  # Fix TensorFlow Text BUILD dependencies for TF Lite shim
+
+build:
+  number: 0
+  ignore_prefix_files: False
+  # Windows builds are skipped due to fundamental cross-platform issues in TensorFlow Text:
+  # - TensorFlow Text BUILD files hardcode Unix library names (libtensorflow_framework.so.2)
+  # - Windows TensorFlow uses DLLs (tensorflow_framework.dll)
+  # - Bazel workspace cleanup removes any pre-placed compatibility files
+  # This requires upstream fixes to TensorFlow Text's BUILD files
+  skip: True  # [py<310 or py>=313 or win]
+
+  missing_dso_whitelist:                   # [linux]
+    - $RPATH/libtensorflow_framework.so.2  # [linux]
+    - '*/libdl.so.*'                       # [linux]
+    - '*/libpthread.so.*'                  # [linux]
+    - '*/libm.so.*'                        # [linux]
+    - '*/libstdc++.so.*'                   # [linux]
+    - '*/libgcc_s.so.*'                    # [linux]
+    - '*/libc.so.*'                        # [linux]
+    - '*/ld-linux-aarch64.so.*'            # [linux]
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - {{ stdlib('c') }}
+    - bazel
+    - perl  # [not win]  # Required for TensorFlow build process
+    - git  # [not win]
+    # setuptools version issue: TF Text requires 70.0.0 but it's not available in conda
+  host:
+    - python
+    - pip
+    - setuptools
+    - wheel
+    # The version of tensorflow has to match the version of tensorflow-text
+    - tensorflow {{ version }}
+    # tensorflow-datasets is necessary to run some tests
+    # - tensorflow-datasets ==4.9.9  # [py<313] # Temporarily disabled due to protobuf conflicts with TF 2.18.1
+    # uncomment this to build against other flavors
+    - _tflow_select 2.3.0 {{ tensorflow_flavor }}
+  run:
+    - python
+    - {{ pin_compatible("tensorflow", min_pin="x.x.x", max_pin="x.x") }}
+    - tensorflow-hub >=0.8.0
+    # uncomment this to build against other flavors
+    - _tflow_select * {{ tensorflow_flavor }}
+
+test:
+  imports:
+    - tensorflow_text
+  requires:
+    # - pip
+  commands:
+    # skipping pip-check because some PyPI dependencies of tensorflow --> tensorflow-cpu-aws end up in the
+    # tensorflow METADATA as they weren't patched out when building tensorflow
+    # - pip check
+    - conda inspect linkages -p $PREFIX tensorflow-text  # [linux]
+
+about:
+  home: https://github.com/tensorflow/text
+  license: Apache-2.0
+  license_family: Apache
+  license_file:
+    - LICENSE
+    - tensorflow_text/core/kernels/LICENSE
+    - oss_scripts/pip_package/LICENSE
+  summary: TensorFlow is a machine learning library, base package contains only tensorflow.
+  description: |
+    TensorFlow Text provides a collection of text related classes and ops ready to use with TensorFlow 2.0. The library
+    can perform the preprocessing regularly required by text-based models, and includes other features useful for
+    sequence modeling not provided by core TensorFlow.
+  dev_url: https://github.com/tensorflow/text
+  doc_url: https://github.com/tensorflow/text
