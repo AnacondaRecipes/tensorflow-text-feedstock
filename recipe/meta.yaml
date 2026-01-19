@@ -1,29 +1,27 @@
-{% set version = "2.12.0" %}
 {% set name = "tensorflow-text" %}
+{% set version = "2.19.0" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
-  url: https://github.com/tensorflow/text/archive/v{{ version }}.tar.gz
-  sha256: 0de6d94d0b76a6050ae8c0ff618bbc5d9a646ef9929161149aad63974f8a56f2
+  url: https://github.com/{{ name.split('-')[0] }}/{{ name.split('-')[1] }}/archive/v{{ version }}.tar.gz
+  sha256: c06c97ebe5b15250a12bddbab094b13f048a20ff0b8a4967bb03c5f4d57fe3f8
   patches:
-    - 0001-adjust-tf-version-range.patch
-    - 0002-make-other-minor-adjustments.patch
-    - 0003-do-not-check-for-bazel-version.patch
-    - 0004-skip-pull-tf-dependencies.patch
-    - 0005-fix-broken-text-filters.patch
-    - 0006-clean-up-after-bazel-temp-files.patch  # [linux]
+    #- 0001-adjust-tf-version-range.patch
+    #- 0002-make-other-minor-adjustments.patch
+    - 0001-Update-bazel-run-command.patch
+    #- 0003-do-not-check-for-bazel-version.patch
+    - 0002-Reomved-Bazel-version-check.patch
+    #- 0004-skip-pull-tf-dependencies.patch
+    - 0003-unvendor-tensorflow-dependency.patch
+    #- 0005-fix-broken-text-filters.patch
+    #- 0006-clean-up-after-bazel-temp-files.patch
+    - 0004-Added-bazel-server-shutdown.patch
 
 build:
   number: 0
-  # skipping s390x and win-64 since we don't have tf for it
-  skip: True  # [s390x or win]
-  # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
-  # are too difficult to configure in bazel
-  skip: True  # [osx]
-  skip: True  # [py>=312]
   missing_dso_whitelist:                   # [linux]
     - $RPATH/libtensorflow_framework.so.2  # [linux]
     - '*/libdl.so.*'                       # [linux]
@@ -33,42 +31,44 @@ build:
     - '*/libgcc_s.so.*'                    # [linux]
     - '*/libc.so.*'                        # [linux]
     - '*/ld-linux-aarch64.so.*'            # [linux]
+  # Latest tensorflow-hub in main is for python 3.12
+  skip: true  #[py>312]
 
 requirements:
   build:
+    - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - bazel
-    - git  # [not win]
-    - patch  # [not win]
+    - bazel-toolchain >=0.2.0  # [not win]
+    - git
   host:
-    - python
     - pip
+    - python
     - setuptools
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow {{ version }}
-    # tensorflow-datasets is necessary to run some tests
-    - tensorflow-datasets  # [py<311]
-    # uncomment this to build against other flavors
+    - tensorflow >=2.19.0,<2.20
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
   run:
     - python
     - {{ pin_compatible("tensorflow", min_pin="x.x.x", max_pin="x.x") }}
-    - tensorflow-hub >=0.8.0
+    # Used in the HubModuleTokenizer
+    - tensorflow-hub >=0.16.1
     # uncomment this to build against other flavors
     - _tflow_select * {{ tensorflow_flavor }}
+  run_constrained:
+    - tensorflow-datasets >=3.2.0
+    - tensorflow-cpu >=2.19.0, <2.20
 
 test:
   imports:
     - tensorflow_text
   requires:
-    # - pip
+    - pip
   commands:
-    # skipping pip-check because some PyPI dependencies of tensorflow --> tensorflow-cpu-aws end up in the
-    # tensorflow METADATA as they weren't patched out when building tensorflow
-    # - pip check
-    - conda inspect linkages -p $PREFIX tensorflow-text  # [linux]
+    - pip check
+    - conda inspect linkages -p $PREFIX tensorflow-text
 
 about:
   home: https://github.com/tensorflow/text
@@ -84,4 +84,4 @@ about:
     can perform the preprocessing regularly required by text-based models, and includes other features useful for
     sequence modeling not provided by core TensorFlow.
   dev_url: https://github.com/tensorflow/text
-  doc_url: https://github.com/tensorflow/text
+  doc_url: https://github.com/tensorflow/text/blob/master/README.md

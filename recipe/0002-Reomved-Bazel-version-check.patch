@@ -1,0 +1,64 @@
+From fe1488d068730b1f3a0086b81900a382dce8d743 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Mon, 19 Jan 2026 03:18:06 -0800
+Subject: [PATCH] Reomved Bazel version check
+
+---
+ oss_scripts/install_bazel.sh | 16 ++++++++--------
+ oss_scripts/run_tests.sh     | 16 ++++++++--------
+ 2 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/oss_scripts/install_bazel.sh b/oss_scripts/install_bazel.sh
+index b12f722..98b56a4 100755
+--- a/oss_scripts/install_bazel.sh
++++ b/oss_scripts/install_bazel.sh
+@@ -53,11 +53,11 @@ function update_bazel_version {
+ 
+ # First check if new version of Bazel needs to be installed.
+ # Install different bazel if needed
+-installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
+-if [ "$installed_bazel_version" == "$BAZEL_VERSION" ]; then
+-  echo "Bazel version ${BAZEL_VERSION} is already correctly installed."
+-else
+-  update_bazel_version ${BAZEL_VERSION}
+-  which bazel
+-  bazel version
+-fi
++#installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
++#if [ "$installed_bazel_version" == "$BAZEL_VERSION" ]; then
++#  echo "Bazel version ${BAZEL_VERSION} is already correctly installed."
++#else
++#  update_bazel_version ${BAZEL_VERSION}
++#  which bazel
++#  bazel version
++#fi
+diff --git a/oss_scripts/run_tests.sh b/oss_scripts/run_tests.sh
+index c9046ae..e9d476f 100644
+--- a/oss_scripts/run_tests.sh
++++ b/oss_scripts/run_tests.sh
+@@ -6,14 +6,14 @@ set -e  # fail and exit on any command erroring
+ ./oss_scripts/configure.sh
+ 
+ # Verify correct version of Bazel
+-installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
+-tf_bazel_version=$(cat .bazelversion)
+-if [ "$installed_bazel_version" != "$tf_bazel_version" ]; then
+-  echo "Incorrect version of Bazel installed."
+-  echo "Version $tf_bazel_version should be installed, but found version ${installed_bazel_version}."
+-  echo "Run oss_scripts/install_bazel.sh or manually install the correct version."
+-  exit 1
+-fi
++#installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
++#tf_bazel_version=$(cat .bazelversion)
++#if [ "$installed_bazel_version" != "$tf_bazel_version" ]; then
++#  echo "Incorrect version of Bazel installed."
++#  echo "Version $tf_bazel_version should be installed, but found version ${installed_bazel_version}."
++#  echo "Run oss_scripts/install_bazel.sh or manually install the correct version."
++#  exit 1
++#fi
+ 
+ # Set tensorflow version
+ if [[ $osname != "Darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
+-- 
+2.39.3 (Apple Git-146)
+
