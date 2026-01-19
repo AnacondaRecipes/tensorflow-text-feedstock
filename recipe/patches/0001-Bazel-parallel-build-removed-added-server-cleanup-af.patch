@@ -1,0 +1,90 @@
+From df1a1939ab4065b2c7879049fc395aa619fc0e0b Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 04:52:53 -0800
+Subject: [PATCH] Bazel parallel build removed, added server cleanup after
+ build, and removed bazel version check
+
+---
+ oss_scripts/install_bazel.sh                 | 11 -----------
+ oss_scripts/pip_package/build_pip_package.sh |  2 +-
+ oss_scripts/run_build.sh                     |  6 +++++-
+ oss_scripts/run_tests.sh                     | 10 ----------
+ 4 files changed, 6 insertions(+), 23 deletions(-)
+
+diff --git a/oss_scripts/install_bazel.sh b/oss_scripts/install_bazel.sh
+index b12f722..c350b3d 100755
+--- a/oss_scripts/install_bazel.sh
++++ b/oss_scripts/install_bazel.sh
+@@ -50,14 +50,3 @@ function update_bazel_version {
+   PATH=$HOME/bin:$PATH
+   rm -f ${BAZEL_INSTALLER}
+ }
+-
+-# First check if new version of Bazel needs to be installed.
+-# Install different bazel if needed
+-installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
+-if [ "$installed_bazel_version" == "$BAZEL_VERSION" ]; then
+-  echo "Bazel version ${BAZEL_VERSION} is already correctly installed."
+-else
+-  update_bazel_version ${BAZEL_VERSION}
+-  which bazel
+-  bazel version
+-fi
+diff --git a/oss_scripts/pip_package/build_pip_package.sh b/oss_scripts/pip_package/build_pip_package.sh
+index 8e411ef..d9ba541 100755
+--- a/oss_scripts/pip_package/build_pip_package.sh
++++ b/oss_scripts/pip_package/build_pip_package.sh
+@@ -101,7 +101,7 @@ main() {
+   if is_nightly; then
+     $installed_python setup.nightly.py bdist_wheel --universal $plat_name
+   else
+-    $installed_python setup.py bdist_wheel --universal $plat_name
++    $installed_python setup.py bdist_wheel --universal
+   fi
+   cp dist/*.whl "${output_dir}"
+ }
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index 029af0b..3852608 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -19,10 +19,14 @@ if [[ $osname != "darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "A
+ fi
+ 
+ # Build the pip package.
+-bazel run ${BUILD_ARGS[@]} --enable_runfiles //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
++# Execute only one action at a time instead of utilizing multiple parallel jobs
++bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
+ 
+ if [ -n "${AUDITWHEEL_PLATFORM}" ]; then
+   echo $(date) : "=== Auditing wheel"
+   PYTHON_MINOR_VERSION=$(python3 -c "import sys; print(sys.version_info.minor)")
+   auditwheel repair --plat ${AUDITWHEEL_PLATFORM} --exclude "$SHARED_LIBRARY_NAME" -w . *cp3$PYTHON_MINOR_VERSION*.whl
+ fi
++
++bazel clean --expunge
++bazel shutdown
+\ No newline at end of file
+diff --git a/oss_scripts/run_tests.sh b/oss_scripts/run_tests.sh
+index c9046ae..b5b8678 100644
+--- a/oss_scripts/run_tests.sh
++++ b/oss_scripts/run_tests.sh
+@@ -5,16 +5,6 @@ set -e  # fail and exit on any command erroring
+ 
+ ./oss_scripts/configure.sh
+ 
+-# Verify correct version of Bazel
+-installed_bazel_version=$(bazel version | grep label | sed -e 's/.*: //')
+-tf_bazel_version=$(cat .bazelversion)
+-if [ "$installed_bazel_version" != "$tf_bazel_version" ]; then
+-  echo "Incorrect version of Bazel installed."
+-  echo "Version $tf_bazel_version should be installed, but found version ${installed_bazel_version}."
+-  echo "Run oss_scripts/install_bazel.sh or manually install the correct version."
+-  exit 1
+-fi
+-
+ # Set tensorflow version
+ if [[ $osname != "Darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
+   source oss_scripts/prepare_tf_dep.sh
+-- 
+2.39.3 (Apple Git-146)
+

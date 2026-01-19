@@ -1,0 +1,28 @@
+From b23e422345eb641563690fd7c5ccf4e09f2b89f8 Mon Sep 17 00:00:00 2001
+From: Eric Lundby <Eric.Lundby@gmail.com>
+Date: Thu, 22 Jan 2026 11:14:54 -0700
+Subject: [PATCH] Exclude vendored abseil headers from tf_header_lib
+
+The pip tensorflow package includes vendored abseil headers (lts_20230802)
+in site-packages/tensorflow/include/absl/. When building tensorflow-text,
+these headers conflict with conda's system abseil (lts_20250127).
+
+This patch excludes the vendored abseil headers from tf_header_lib,
+forcing the compiler to find abseil headers from the system include path
+(via CPLUS_INCLUDE_PATH or -isystem flags).
+---
+ third_party/tensorflow/tf_configure.bzl | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/third_party/tensorflow/tf_configure.bzl b/third_party/tensorflow/tf_configure.bzl
+--- a/third_party/tensorflow/tf_configure.bzl
++++ b/third_party/tensorflow/tf_configure.bzl
+@@ -14,7 +14,7 @@ def tf_configure():
+     tensorflow_annotation = """
+ cc_library(
+     name = "tf_header_lib",
+-    hdrs = glob(["site-packages/tensorflow/include/**/*"]),
++    hdrs = glob(["site-packages/tensorflow/include/**/*"], exclude=["site-packages/tensorflow/include/absl/**"]),
+     strip_include_prefix="site-packages/tensorflow/include/",
+     visibility = ["//visibility:public"],
+ )

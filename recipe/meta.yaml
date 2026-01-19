@@ -1,30 +1,31 @@
-{% set version = "2.12.0" %}
 {% set name = "tensorflow-text" %}
+{% set version = "2.19.0" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
-  url: https://github.com/tensorflow/text/archive/v{{ version }}.tar.gz
-  sha256: 0de6d94d0b76a6050ae8c0ff618bbc5d9a646ef9929161149aad63974f8a56f2
+  url: https://github.com/{{ name.split('-')[0] }}/{{ name.split('-')[1] }}/archive/v{{ version }}.tar.gz
+  sha256: c06c97ebe5b15250a12bddbab094b13f048a20ff0b8a4967bb03c5f4d57fe3f8
   patches:
-    - 0001-adjust-tf-version-range.patch
-    - 0002-make-other-minor-adjustments.patch
-    - 0003-do-not-check-for-bazel-version.patch
-    - 0004-skip-pull-tf-dependencies.patch
-    - 0005-fix-broken-text-filters.patch
-    - 0006-clean-up-after-bazel-temp-files.patch  # [linux]
+    - patches/0001-Bazel-parallel-build-removed-added-server-cleanup-af.patch
+    - patches/0002-Remove-setuptools-hard-pin.patch
+    - patches/0003-Unvendor-tensorflow.patch
+    # Fix missing absl/strings/str_cat.h includes in tensorflow-text source
+    - patches/0004-Add-missing-str_cat-includes.patch
+    # Create patch files for TensorFlow (applied during Bazel build)
+    - patches/0005-Create-tflite-tensor-view-patch.patch
+    - patches/0006-Create-abseil-systemlib-patch.patch
+    # Apply the above patches to TensorFlow archive in WORKSPACE
+    - patches/0007-Apply-patches-to-TensorFlow-archive.patch
+    # Exclude vendored abseil headers from pypi_tensorflow to use system abseil
+    - patches/0008-Exclude-vendored-abseil-from-tf-headers.patch
 
 build:
   number: 0
-  # skipping s390x and win-64 since we don't have tf for it
-  skip: True  # [s390x or win]
-  # skipping osx builds because bazel configuration for missing sources (bpe_model.cc, etc.)
-  # are too difficult to configure in bazel
-  skip: True  # [osx]
-  skip: True  # [py>=312]
-  missing_dso_whitelist:                   # [linux]
+  missing_dso_whitelist:
+    # Linux
     - $RPATH/libtensorflow_framework.so.2  # [linux]
     - '*/libdl.so.*'                       # [linux]
     - '*/libpthread.so.*'                  # [linux]
@@ -33,42 +34,52 @@ build:
     - '*/libgcc_s.so.*'                    # [linux]
     - '*/libc.so.*'                        # [linux]
     - '*/ld-linux-aarch64.so.*'            # [linux]
+    # macOS
+    - $RPATH/libtensorflow_framework.2.dylib  # [osx]
+  ignore_run_exports:
+    - libabseil                            # [osx]
+    - libcxx                               # [osx]
+    - zlib                                 # [osx]
+  # Latest version of supported python 3.12, look requirements_lock files
+  skip: true  # [py>312]
+  # TODO: add support for windows
+  skip: true  # [win]
 
 requirements:
   build:
+    - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - bazel
-    - git  # [not win]
-    - patch  # [not win]
+    - bazel <7
+    - bazel-toolchain >=0.4.1  # [not win]
+    - git
   host:
-    - python
     - pip
-    - setuptools
+    - python
+    - setuptools >=70.0.0,<76
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow {{ version }}
-    # tensorflow-datasets is necessary to run some tests
-    - tensorflow-datasets  # [py<311]
-    # uncomment this to build against other flavors
+    - tensorflow ==2.19.1
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
+    - libabseil 20250127.*
   run:
     - python
-    - {{ pin_compatible("tensorflow", min_pin="x.x.x", max_pin="x.x") }}
-    - tensorflow-hub >=0.8.0
-    # uncomment this to build against other flavors
+    - tensorflow >=2.19.0,<2.20    
     - _tflow_select * {{ tensorflow_flavor }}
+    - libabseil 20250127.*
+  run_constrained:
+    - tensorflow-datasets >=3.2.0
+    - tensorflow-cpu >=2.19.0, <2.20
+    - tensorflow-hub >=0.16.1
 
 test:
   imports:
     - tensorflow_text
   requires:
-    # - pip
+    - pip
   commands:
-    # skipping pip-check because some PyPI dependencies of tensorflow --> tensorflow-cpu-aws end up in the
-    # tensorflow METADATA as they weren't patched out when building tensorflow
-    # - pip check
-    - conda inspect linkages -p $PREFIX tensorflow-text  # [linux]
+    - pip check
+    - conda inspect linkages -p $PREFIX tensorflow-text
 
 about:
   home: https://github.com/tensorflow/text
@@ -84,4 +95,4 @@ about:
     can perform the preprocessing regularly required by text-based models, and includes other features useful for
     sequence modeling not provided by core TensorFlow.
   dev_url: https://github.com/tensorflow/text
-  doc_url: https://github.com/tensorflow/text
+  doc_url: https://github.com/tensorflow/text/blob/master/README.md

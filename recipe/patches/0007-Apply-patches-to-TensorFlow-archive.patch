@@ -1,0 +1,25 @@
+From b2b88ae3385e209c2120a2611900860d8e9f8706 Mon Sep 17 00:00:00 2001
+From: Eric Lundby <Eric.Lundby@gmail.com>
+Date: Thu, 22 Jan 2026 11:12:40 -0700
+Subject: [PATCH] Apply the patches to the TensorFlow repository during Bazel build.
+
+Apply the patches created in 0005 and 0006 to the TensorFlow repository during Bazel build. 
+---
+ WORKSPACE | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/WORKSPACE b/WORKSPACE
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -58,6 +58,11 @@ http_archive(
+     name = "org_tensorflow",
+     strip_prefix = "tensorflow-2.19.0",
+     sha256 = "c86c09eeec97253fa02cd65733042b1e77dcb9a90cffbe75b6d53e7d0653af3a",
++    patches = [
++        "//third_party/tensorflow:tflite_tensor_view_fix.patch",
++        "//third_party/tensorflow:abseil_systemlib.patch",
++    ],
++    patch_args = ["-p1"],
+     urls = [
+         "https://github.com/tensorflow/tensorflow/archive/v2.19.0.zip"
+     ],
