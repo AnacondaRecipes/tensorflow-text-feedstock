@@ -1,4 +1,2 @@
 tensorflow_flavor:
   - mkl
- # - eigen
- # - gpu

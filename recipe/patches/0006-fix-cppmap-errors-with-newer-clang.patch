@@ -1,0 +1,29 @@
+From bf4b932f71b9d3388b18e1c4f01d93546e58732d Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 05:09:25 -0800
+Subject: [PATCH] fix cppmap errors with newer clang
+
+---
+ oss_scripts/run_build.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index 14400af..47f39b0 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -31,6 +31,12 @@ if [[ $osname == "darwin" ]] && [[ -n "${SDKROOT}" ]]; then
+   # Compatibility: Allow TensorFlow's std::is_signed specializations with newer libc++
+   echo "build --copt=-Wno-invalid-specialization" >> .bazelrc
+   echo "build --host_copt=-Wno-invalid-specialization" >> .bazelrc
++
++  # Disable C++ modules (causes .cppmap errors with newer clang)
++  echo "build --features=-use_module_maps" >> .bazelrc
++  echo "build --features=-layering_check" >> .bazelrc
++  echo "build --copt=-fno-modules" >> .bazelrc
++  echo "build --host_copt=-fno-modules" >> .bazelrc
+   
+   echo "build --verbose_failures" >> .bazelrc
+ fi
+-- 
+2.39.3 (Apple Git-146)
+

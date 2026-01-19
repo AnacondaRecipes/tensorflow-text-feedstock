@@ -1,0 +1,68 @@
+From 425889c6998cfe634806b222c1867d03de481fec Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 05:02:42 -0800
+Subject: [PATCH] Unvendor tensorflow
+
+---
+ oss_scripts/configure.sh | 13 -------------
+ oss_scripts/run_build.sh |  5 -----
+ oss_scripts/run_tests.sh |  5 -----
+ 3 files changed, 23 deletions(-)
+
+diff --git a/oss_scripts/configure.sh b/oss_scripts/configure.sh
+index 1484e65..86e845a 100755
+--- a/oss_scripts/configure.sh
++++ b/oss_scripts/configure.sh
+@@ -32,19 +32,6 @@ function is_macos() {
+ # Remove .bazelrc if it already exist
+ [ -e .bazelrc ] && rm .bazelrc
+ 
+-if [[ $(pip show tensorflow) == *tensorflow* ]] ||
+-   [[ $(pip show tensorflow-macos) == *tensorflow-macos* ]] ||
+-   [[ $(pip show tf-nightly) == *tf-nightly* ]]; then
+-  echo 'Using installed tensorflow.'
+-else
+-  echo 'Installing tensorflow.'
+-  if [[ "$IS_NIGHTLY" == "nightly" ]]; then
+-    pip install tf-nightly
+-  else
+-    pip install tensorflow==2.19.0
+-  fi
+-fi
+-
+ # Copy the current bazelversion of TF.
+ curl https://raw.githubusercontent.com/tensorflow/tensorflow/r2.19/.bazelversion -o .bazelversion
+ 
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index 3852608..18985ce 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -13,11 +13,6 @@ fi
+ # Run configure.
+ source oss_scripts/configure.sh
+ 
+-# Set tensorflow version
+-if [[ $osname != "darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
+-  source oss_scripts/prepare_tf_dep.sh
+-fi
+-
+ # Build the pip package.
+ # Execute only one action at a time instead of utilizing multiple parallel jobs
+ bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
+diff --git a/oss_scripts/run_tests.sh b/oss_scripts/run_tests.sh
+index b5b8678..80dc210 100644
+--- a/oss_scripts/run_tests.sh
++++ b/oss_scripts/run_tests.sh
+@@ -5,9 +5,4 @@ set -e  # fail and exit on any command erroring
+ 
+ ./oss_scripts/configure.sh
+ 
+-# Set tensorflow version
+-if [[ $osname != "Darwin" ]] || [[ ! $(sysctl -n machdep.cpu.brand_string) =~ "Apple" ]]; then
+-  source oss_scripts/prepare_tf_dep.sh
+-fi
+-
+ bazel test --test_output=errors --keep_going --jobs=1 tensorflow_text:all
+-- 
+2.39.3 (Apple Git-146)
+
