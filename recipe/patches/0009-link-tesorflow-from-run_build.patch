@@ -1,0 +1,41 @@
+From fdf3e1740ce3ee1e5a5c9f2b6abae2a05ab5e15f Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 09:11:48 -0800
+Subject: [PATCH] link tesorflow from run_build
+
+---
+ oss_scripts/run_build.sh | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index d680733..4d57dbf 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -81,6 +81,24 @@ if [[ -n "${PREFIX}" ]]; then
+   echo "build --linkopt=-Wl,-rpath,${PREFIX}/lib" >> .bazelrc
+ fi
+ 
++# Configure Bazel to find conda-provided TensorFlow headers and libraries
++if [[ -n "${PREFIX}" ]]; then
++  TF_INCLUDE_DIR="${PREFIX}/include/tensorflow"
++  TF_LIB_DIR="${PREFIX}/lib"
++  echo "" >> .bazelrc
++  echo "# Use conda-provided TensorFlow (2.19.1)" >> .bazelrc
++  # TensorFlow headers (framework, ops, etc.)
++  echo "build --cxxopt=-I${PREFIX}/include" >> .bazelrc
++  echo "build --host_cxxopt=-I${PREFIX}/include" >> .bazelrc
++  # TensorFlow library search paths
++  echo "build --linkopt=-L${TF_LIB_DIR}" >> .bazelrc
++  echo "build --host_linkopt=-L${TF_LIB_DIR}" >> .bazelrc
++  # Explicitly link against TensorFlow framework
++  echo "build --linkopt=-ltensorflow_framework" >> .bazelrc
++  # Runtime path for TensorFlow libraries
++  echo "build --linkopt=-Wl,-rpath,${TF_LIB_DIR}" >> .bazelrc
++fi
++
+ # Build the pip package.
+ # Execute only one action at a time instead of utilizing multiple parallel jobs
+ bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
+-- 
+2.39.3 (Apple Git-146)
+

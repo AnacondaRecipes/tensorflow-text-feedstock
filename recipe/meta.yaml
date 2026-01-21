@@ -28,6 +28,7 @@ source:
     # error: 'StrCat' is not a member of 'absl'
     #- patches/0008-Add-str_cat-missing-includes.patch
     - patches/0008-Added-missing-include-and-dependency-for-absl-strcat.patch
+    - patches/0009-link-tesorflow-from-run_build.patch
 
 build:
   number: 0
@@ -66,7 +67,7 @@ requirements:
     - setuptools >=70.0.0,<76
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow >=2.19.0,<2.20
+    - tensorflow ==2.19.1
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
     - libabseil 20250127.*
   run:
