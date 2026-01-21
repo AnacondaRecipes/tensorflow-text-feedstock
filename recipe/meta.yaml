@@ -25,6 +25,8 @@ source:
     #ImportError: lib/python3.10/site-packages/tensorflow_text/core/pybinds/tflite_registrar.so: undefined symbol: _ZN4absl12lts_2023080216raw_log_internal21internal_log_functionB5cxx11E
     #- patches/0007-Override-abseil-cpp-to-use-version-20250127-instead-.patch
     - patches/0007-unvendor-only-abseil.patch
+    # error: 'StrCat' is not a member of 'absl'
+    - patches/0008-Add-str_cat-missing-includes.patch
 
 build:
   number: 0

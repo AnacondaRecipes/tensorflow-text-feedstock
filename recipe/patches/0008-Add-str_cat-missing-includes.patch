@@ -1,0 +1,143 @@
+From b9e9358cd70096f4a12b83708db0621d682d8cef Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 07:55:09 -0800
+Subject: [PATCH] Add str_cat missing includes
+
+---
+ tensorflow_text/core/kernels/BUILD                              | 1 +
+ .../core/kernels/boise_offset_converter_kernel_template.h       | 1 +
+ tensorflow_text/core/kernels/byte_splitter_kernel_template.h    | 1 +
+ tensorflow_text/core/kernels/darts_clone_trie_builder.cc        | 1 +
+ .../core/kernels/fast_bert_normalizer_model_builder.cc          | 1 +
+ tensorflow_text/core/kernels/fast_bert_normalizer_test.cc       | 2 ++
+ tensorflow_text/core/kernels/fast_wordpiece_tokenizer.cc        | 1 +
+ tensorflow_text/core/kernels/fast_wordpiece_tokenizer_test.cc   | 2 ++
+ .../core/kernels/round_robin_trimmer_kernel_template.h          | 1 +
+ .../core/kernels/sentence_fragmenter_v2_kernel_template.h       | 1 +
+ 10 files changed, 12 insertions(+)
+
+diff --git a/tensorflow_text/core/kernels/BUILD b/tensorflow_text/core/kernels/BUILD
+index eda400a..017cc6a 100644
+--- a/tensorflow_text/core/kernels/BUILD
++++ b/tensorflow_text/core/kernels/BUILD
+@@ -335,6 +335,7 @@ cc_library(
+     deps = [
+         "@com_google_absl//absl/container:flat_hash_set",
+         "@com_google_absl//absl/status:statusor",
++        "@com_google_absl//absl/strings",
+         "@darts_clone",
+     ],
+ )
+diff --git a/tensorflow_text/core/kernels/boise_offset_converter_kernel_template.h b/tensorflow_text/core/kernels/boise_offset_converter_kernel_template.h
+index c524b07..fc2f04f 100644
+--- a/tensorflow_text/core/kernels/boise_offset_converter_kernel_template.h
++++ b/tensorflow_text/core/kernels/boise_offset_converter_kernel_template.h
+@@ -21,6 +21,7 @@
+ #include <vector>
+ 
+ #include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
+ #include "tensorflow/core/platform/tstring.h"
+ #include "tensorflow/lite/kernels/shim/op_kernel.h"
+ #include "tensorflow/lite/kernels/shim/shape.h"
+diff --git a/tensorflow_text/core/kernels/byte_splitter_kernel_template.h b/tensorflow_text/core/kernels/byte_splitter_kernel_template.h
+index 1726668..c1e2468 100644
+--- a/tensorflow_text/core/kernels/byte_splitter_kernel_template.h
++++ b/tensorflow_text/core/kernels/byte_splitter_kernel_template.h
+@@ -19,6 +19,7 @@
+ #include <vector>
+ 
+ #include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
+ #include "tensorflow/core/platform/tstring.h"
+ #include "tensorflow/lite/kernels/shim/op_kernel.h"
+ #include "tensorflow/lite/kernels/shim/shape.h"
+diff --git a/tensorflow_text/core/kernels/darts_clone_trie_builder.cc b/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
+index 0752882..352e85d 100644
+--- a/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
++++ b/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
+@@ -19,6 +19,7 @@
+ #include <numeric>
+ 
+ #include "absl/container/flat_hash_set.h"
++#include "absl/strings/str_cat.h"
+ #include "include/darts.h"
+ 
+ namespace tensorflow {
+diff --git a/tensorflow_text/core/kernels/fast_bert_normalizer_model_builder.cc b/tensorflow_text/core/kernels/fast_bert_normalizer_model_builder.cc
+index 4c10278..55132e5 100644
+--- a/tensorflow_text/core/kernels/fast_bert_normalizer_model_builder.cc
++++ b/tensorflow_text/core/kernels/fast_bert_normalizer_model_builder.cc
+@@ -23,6 +23,7 @@
+ #include "absl/memory/memory.h"
+ #include "absl/status/status.h"
+ #include "absl/status/statusor.h"
++#include "absl/strings/str_cat.h"
+ #include "absl/strings/string_view.h"
+ #include "icu4c/source/common/unicode/errorcode.h"
+ #include "icu4c/source/common/unicode/normalizer2.h"
+diff --git a/tensorflow_text/core/kernels/fast_bert_normalizer_test.cc b/tensorflow_text/core/kernels/fast_bert_normalizer_test.cc
+index d4bf7e0..eb2437e 100644
+--- a/tensorflow_text/core/kernels/fast_bert_normalizer_test.cc
++++ b/tensorflow_text/core/kernels/fast_bert_normalizer_test.cc
+@@ -18,6 +18,8 @@
+ 
+ #include <gmock/gmock.h>
+ #include <gtest/gtest.h>
++#include "absl/strings/str_cat.h"
++#include "absl/strings/str_join.h"
+ #include "tensorflow_text/core/kernels/fast_bert_normalizer_model_builder.h"
+ 
+ namespace tensorflow {
+diff --git a/tensorflow_text/core/kernels/fast_wordpiece_tokenizer.cc b/tensorflow_text/core/kernels/fast_wordpiece_tokenizer.cc
+index c55aa92..2de8442 100644
+--- a/tensorflow_text/core/kernels/fast_wordpiece_tokenizer.cc
++++ b/tensorflow_text/core/kernels/fast_wordpiece_tokenizer.cc
+@@ -20,6 +20,7 @@
+ #include "absl/status/status.h"
+ #include "absl/status/statusor.h"
+ #include "absl/strings/match.h"
++#include "absl/strings/str_cat.h"
+ #include "absl/strings/str_join.h"
+ #include "absl/strings/string_view.h"
+ #include "icu4c/source/common/unicode/uchar.h"
+diff --git a/tensorflow_text/core/kernels/fast_wordpiece_tokenizer_test.cc b/tensorflow_text/core/kernels/fast_wordpiece_tokenizer_test.cc
+index 66fee9f..a719dd6 100644
+--- a/tensorflow_text/core/kernels/fast_wordpiece_tokenizer_test.cc
++++ b/tensorflow_text/core/kernels/fast_wordpiece_tokenizer_test.cc
+@@ -17,6 +17,8 @@
+ #include <gmock/gmock.h>
+ #include <gtest/gtest.h>
+ #include "absl/flags/flag.h"
++#include "absl/strings/str_cat.h"
++#include "absl/strings/str_join.h"
+ #include "icu4c/source/common/unicode/uchar.h"
+ #include "tensorflow/core/platform/env.h"
+ #include "tensorflow_text/core/kernels/fast_wordpiece_tokenizer_model_builder.h"
+diff --git a/tensorflow_text/core/kernels/round_robin_trimmer_kernel_template.h b/tensorflow_text/core/kernels/round_robin_trimmer_kernel_template.h
+index e4c9ede..211ef9a 100644
+--- a/tensorflow_text/core/kernels/round_robin_trimmer_kernel_template.h
++++ b/tensorflow_text/core/kernels/round_robin_trimmer_kernel_template.h
+@@ -20,6 +20,7 @@
+ #include <vector>
+ 
+ #include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
+ #include "absl/types/span.h"
+ #include "tensorflow/lite/kernels/shim/op_kernel.h"
+ #include "tensorflow/lite/kernels/shim/shape.h"
+diff --git a/tensorflow_text/core/kernels/sentence_fragmenter_v2_kernel_template.h b/tensorflow_text/core/kernels/sentence_fragmenter_v2_kernel_template.h
+index 481f9e2..2ad4c9f 100644
+--- a/tensorflow_text/core/kernels/sentence_fragmenter_v2_kernel_template.h
++++ b/tensorflow_text/core/kernels/sentence_fragmenter_v2_kernel_template.h
+@@ -20,6 +20,7 @@
+ #include <vector>
+ 
+ #include "absl/status/status.h"
++#include "absl/strings/str_cat.h"
+ #include "tensorflow/lite/kernels/shim/op_kernel.h"
+ #include "tensorflow/lite/kernels/shim/shape.h"
+ #include "tensorflow/lite/kernels/shim/status_macros.h"
+-- 
+2.39.3 (Apple Git-146)
+
