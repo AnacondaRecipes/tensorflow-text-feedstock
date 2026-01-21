@@ -10,6 +10,9 @@ export PATH=$PREFIX/bin:$PATH
 export PIP_NO_BINARY=:none:
 export PIP_REQUIRE_HASHES=0
 
+# Tell Bazel to use conda-provided system libraries instead of vendored versions
+export TF_SYSTEM_LIBS="com_google_absl"
+
 if [[ "${target_platform}" == osx-* ]]; then
   export LDFLAGS="${LDFLAGS} -lz -framework CoreFoundation -Xlinker -undefined -Xlinker dynamic_lookup"
 

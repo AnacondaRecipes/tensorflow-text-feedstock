@@ -1,34 +1,49 @@
-From ad3d14c6c10105e73e1e8fbe70e0caf796e1860a Mon Sep 17 00:00:00 2001
+From 12b87c7d54de442e7f44dc7ce6b6a47b6aee7d3c Mon Sep 17 00:00:00 2001
 From: Andrii Osipov <aosipov@anaconda.com>
 Date: Wed, 21 Jan 2026 06:56:52 -0800
 Subject: [PATCH] unvendor only abseil
 
 ---
- oss_scripts/run_build.sh | 34 ++++++++++++++++++++++++++++++++++
- 1 file changed, 34 insertions(+)
+ oss_scripts/run_build.sh | 42 +++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 41 insertions(+), 1 deletion(-)
 
 diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
-index 47f39b0..5261838 100755
+index 47f39b0..d680733 100755
 --- a/oss_scripts/run_build.sh
 +++ b/oss_scripts/run_build.sh
-@@ -14,6 +14,40 @@ fi
- source oss_scripts/configure.sh
+@@ -21,7 +21,7 @@ if [[ $osname == "darwin" ]] && [[ -n "${SDKROOT}" ]]; then
+   echo "build --action_env=DEVELOPER_DIR=${DEVELOPER_DIR}" >> .bazelrc
+   echo "build --copt=-isysroot${SDKROOT}" >> .bazelrc
+   echo "build --linkopt=-isysroot${SDKROOT}" >> .bazelrc
+-  
++
+   # CRITICAL: Add host (tool) compilation flags
+   echo "build --host_copt=-isysroot${SDKROOT}" >> .bazelrc
+   echo "build --host_linkopt=-isysroot${SDKROOT}" >> .bazelrc
+@@ -41,6 +41,46 @@ if [[ $osname == "darwin" ]] && [[ -n "${SDKROOT}" ]]; then
+   echo "build --verbose_failures" >> .bazelrc
+ fi
  
- # Add conda-specific configuration after configure
 +# Configure Bazel to use conda-provided libabseil (20250127) instead of vendored abseil-cpp (20230802)
++# This configuration is specific to abseil only and does not affect protobuf or other packages
 +if [[ -n "${PREFIX}" ]]; then
 +  echo "" >> .bazelrc
-+  echo "# Use conda-provided libabseil instead of vendored abseil-cpp" >> .bazelrc
-+  # Note: Cannot use --copt with absolute paths outside execution root (Bazel restriction)
-+  # Use environment variables to help linker find libraries, and try -L flags (may work for linking)
++  echo "# Use conda-provided libabseil (20250127) - abseil-specific configuration only" >> .bazelrc
++  # Include path for abseil headers (via environment variable to avoid Bazel sandbox restrictions)
++  # Note: CPLUS_INCLUDE_PATH is used by the compiler to find headers, but only when explicitly
++  # referenced. Since we're using TF_SYSTEM_LIBS="com_google_absl", TensorFlow should prefer
++  # system abseil, and this helps the compiler find it.
++  echo "build --action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include" >> .bazelrc
++  echo "build --host_action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include" >> .bazelrc
++  # Library search paths for abseil libraries
 +  echo "build --action_env=LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
 +  echo "build --action_env=LD_LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
 +  echo "build --host_action_env=LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
 +  echo "build --host_action_env=LD_LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
-+  # Try linker search path flags (linker paths may be allowed even if include paths aren't)
++  # Linker search path for abseil libraries
 +  echo "build --linkopt=-L${PREFIX}/lib" >> .bazelrc
 +  echo "build --host_linkopt=-L${PREFIX}/lib" >> .bazelrc
-+  # Link against conda-provided abseil libraries (20250127)
++  # Explicitly link against conda-provided abseil libraries (20250127)
 +  echo "build --linkopt=-labsl_base" >> .bazelrc
 +  echo "build --linkopt=-labsl_raw_logging_internal" >> .bazelrc
 +  echo "build --linkopt=-labsl_strings" >> .bazelrc
@@ -45,13 +60,13 @@ index 47f39b0..5261838 100755
 +  echo "build --linkopt=-labsl_graphcycles_internal" >> .bazelrc
 +  echo "build --linkopt=-labsl_kernel_timeout_internal" >> .bazelrc
 +  echo "build --linkopt=-labsl_malloc_internal" >> .bazelrc
-+  # Ensure runtime library path includes conda lib directory (works for both Linux and macOS)
++  # Runtime library path for abseil (works for both Linux and macOS)
 +  echo "build --linkopt=-Wl,-rpath,${PREFIX}/lib" >> .bazelrc
 +fi
 +
- if [[ $osname == "darwin" ]] && [[ -n "${SDKROOT}" ]]; then
-   echo "" >> .bazelrc
-   echo "# Conda macOS sysroot configuration" >> .bazelrc
+ # Build the pip package.
+ # Execute only one action at a time instead of utilizing multiple parallel jobs
+ bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
 -- 
 2.39.3 (Apple Git-146)
 
