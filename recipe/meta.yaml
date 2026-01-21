@@ -26,7 +26,7 @@ source:
     #- patches/0007-Override-abseil-cpp-to-use-version-20250127-instead-.patch
     - patches/0007-unvendor-only-abseil.patch
     # error: 'StrCat' is not a member of 'absl'
-    - patches/0008-Add-str_cat-missing-includes.patch
+    #- patches/0008-Add-str_cat-missing-includes.patch
 
 build:
   number: 0
