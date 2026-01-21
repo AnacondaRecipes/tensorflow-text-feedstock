@@ -1,0 +1,37 @@
+From 4a8ed54c5d80f5bb8d111ed6bdd507cf55ca9a38 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Wed, 21 Jan 2026 03:07:47 -0800
+Subject: [PATCH] Added missing include and dependency for absl strcat
+
+---
+ tensorflow_text/core/kernels/BUILD                       | 1 +
+ tensorflow_text/core/kernels/darts_clone_trie_builder.cc | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/tensorflow_text/core/kernels/BUILD b/tensorflow_text/core/kernels/BUILD
+index eda400a..017cc6a 100644
+--- a/tensorflow_text/core/kernels/BUILD
++++ b/tensorflow_text/core/kernels/BUILD
+@@ -335,6 +335,7 @@ cc_library(
+     deps = [
+         "@com_google_absl//absl/container:flat_hash_set",
+         "@com_google_absl//absl/status:statusor",
++        "@com_google_absl//absl/strings",
+         "@darts_clone",
+     ],
+ )
+diff --git a/tensorflow_text/core/kernels/darts_clone_trie_builder.cc b/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
+index 0752882..352e85d 100644
+--- a/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
++++ b/tensorflow_text/core/kernels/darts_clone_trie_builder.cc
+@@ -19,6 +19,7 @@
+ #include <numeric>
+ 
+ #include "absl/container/flat_hash_set.h"
++#include "absl/strings/str_cat.h"
+ #include "include/darts.h"
+ 
+ namespace tensorflow {
+-- 
+2.39.3 (Apple Git-146)
+
