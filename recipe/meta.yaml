@@ -42,8 +42,7 @@ source:
     # Try to switch on tensorflow from conda environment which used abseil 20250127 inside the pkg
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     - patches/0003-Prevent-tensorflow-installation-from-the-pip.patch
-    - patches/0004-modifie-the-TensorFlow-repository-to-use-libabseil-2.patch
-    - patches/0005-Use-abseil-20250127.0-in-tensorflow-sources.patch
+    - patches/0004-update-tensorflow-to-2.19.1-and-libabseil-to-2025012.patch
 
 build:
   number: 0
