@@ -29,7 +29,8 @@ source:
     #- patches/0008-Add-str_cat-missing-includes.patch
     - patches/0008-Added-missing-include-and-dependency-for-absl-strcat.patch
     #- patches/0009-link-tesorflow-from-run_build.patch
-    - patches/0010-Add-configuration-to-use-conda-bazel-toolchain.patch
+    - patches/0009-Add-configuration-to-use-conda-bazel-toolchain.patch
+    - patches/0010-Add-missing-str_cat-in-the-vendored-tensorflow-pkg.patch
 
 build:
   number: 0
