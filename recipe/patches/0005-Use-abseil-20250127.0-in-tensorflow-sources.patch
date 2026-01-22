@@ -1,0 +1,48 @@
+From 581bd22b001ff98d7f23f7df0046e16db23453a0 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 04:26:38 -0800
+Subject: [PATCH] Use abseil 20250127.0 in tensorflow sources
+
+---
+ .../tensorflow/update-abseil-to-20250127.patch       | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/third_party/tensorflow/update-abseil-to-20250127.patch b/third_party/tensorflow/update-abseil-to-20250127.patch
+index 0a7b508..75c8b48 100644
+--- a/third_party/tensorflow/update-abseil-to-20250127.patch
++++ b/third_party/tensorflow/update-abseil-to-20250127.patch
+@@ -7,8 +7,8 @@ This updates TensorFlow's vendored abseil from 20230802.0 to 20250127.0
+ to match the conda-provided libabseil version and avoid ABI mismatches.
+ 
+ ---
+- third_party/absl/workspace.bzl | 5 +++--
+- 1 file changed, 3 insertions(+), 2 deletions(-)
++ third_party/absl/workspace.bzl | 7 ++++---
++ 1 file changed, 4 insertions(+), 3 deletions(-)
+ 
+ diff --git a/third_party/absl/workspace.bzl b/third_party/absl/workspace.bzl
+ index 0000000..1111111 100644
+@@ -25,15 +25,17 @@ index 0000000..1111111 100644
+      # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake)
+  
+      SYS_DIRS = [
+-@@ -43,7 +44,7 @@ def repo():
++@@ -43,7 +44,8 @@ def repo():
+          system_build_file = "//third_party/absl:system.BUILD",
+          system_link_files = SYS_LINKS,
+ -        strip_prefix = "abseil-cpp-{commit}".format(commit = ABSL_COMMIT),
+ -        urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/{commit}.tar.gz".format(commit = ABSL_COMMIT)),
+ +        strip_prefix = "abseil-cpp-20250127.0",
+-+        urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/refs/tags/20250127.0.tar.gz"),
+++        # Use direct GitHub URL
+++        urls = ["https://github.com/abseil/abseil-cpp/archive/refs/tags/20250127.0.tar.gz"],
+++        # nvidia_jetson.patch removed - it doesn't apply to 20250127.0 and isn't needed for conda builds
+          patch_file = [
+-             "//third_party/absl:nvidia_jetson.patch",
++-            "//third_party/absl:nvidia_jetson.patch",
+          ],
+ -- 
+ 2.39.3 (Apple Git-146)
+-- 
+2.39.3 (Apple Git-146)
+

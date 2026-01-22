@@ -43,6 +43,7 @@ source:
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     - patches/0003-Prevent-tensorflow-installation-from-the-pip.patch
     - patches/0004-modifie-the-TensorFlow-repository-to-use-libabseil-2.patch
+    - patches/0005-Use-abseil-20250127.0-in-tensorflow-sources.patch
 
 build:
   number: 0
