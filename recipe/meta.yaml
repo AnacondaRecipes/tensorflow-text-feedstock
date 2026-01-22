@@ -67,6 +67,7 @@ requirements:
     - tensorflow >=2.19.0,<2.20    
     - _tflow_select * {{ tensorflow_flavor }}
     - libabseil 20250127.*
+    - libzlib  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0
     - tensorflow-cpu >=2.19.0, <2.20
