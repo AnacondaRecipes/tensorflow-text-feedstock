@@ -34,6 +34,7 @@ source:
     # tflite_registrar.so: undefined symbol: _ZN4absl12lts_2023080213base_internal18ThrowStdOutOfRangeEPKc
     - patches/0011-Add-absl_base_internal-option.patch
     - patches/0012-Increase-verbose-level-for-bazel-run.patch
+    - patches/0013-Update-abseil-in-the-tensorflow-thirparty-to-2025012.patch
 
 build:
   number: 0
