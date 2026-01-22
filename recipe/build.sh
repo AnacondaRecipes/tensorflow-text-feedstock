@@ -6,14 +6,16 @@ bazel shutdown
 
 export PATH=$PREFIX/bin:$PATH
 
+source gen-bazel-toolchain
+
 # Disable pip hash checking if Bazel tries to install from requirements
 export PIP_NO_BINARY=:none:
 export PIP_REQUIRE_HASHES=0
 
 # Tell Bazel to use conda-provided system libraries instead of vendored versions
-export TF_SYSTEM_LIBS="com_google_absl"
+#export TF_SYSTEM_LIBS="com_google_absl"
 
-source gen-bazel-toolchain
+
 
 if [[ "${target_platform}" == osx-* ]]; then
   export LDFLAGS="${LDFLAGS} -lz -framework CoreFoundation -Xlinker -undefined -Xlinker dynamic_lookup"

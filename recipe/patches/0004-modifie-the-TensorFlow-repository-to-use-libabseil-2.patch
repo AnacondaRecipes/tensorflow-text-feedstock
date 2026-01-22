@@ -1,0 +1,93 @@
+From 6643f32eb8ab880973e05bdf6835251d6886058f Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 04:12:00 -0800
+Subject: [PATCH] modifie the TensorFlow repository to use libabseil 2025
+
+---
+ WORKSPACE                                     | 10 +++--
+ third_party/tensorflow/BUILD                  |  4 ++
+ .../update-abseil-to-20250127.patch           | 39 +++++++++++++++++++
+ 3 files changed, 50 insertions(+), 3 deletions(-)
+ create mode 100644 third_party/tensorflow/update-abseil-to-20250127.patch
+
+diff --git a/WORKSPACE b/WORKSPACE
+index 5bc8329..730d2e3 100644
+--- a/WORKSPACE
++++ b/WORKSPACE
+@@ -56,11 +56,15 @@ http_archive(
+ 
+ http_archive(
+     name = "org_tensorflow",
+-    strip_prefix = "tensorflow-2.19.0",
+-    sha256 = "c86c09eeec97253fa02cd65733042b1e77dcb9a90cffbe75b6d53e7d0653af3a",
++    strip_prefix = "tensorflow-2.19.1",
++    sha256 = "d146daad660c38c5ee0591e7d7ce0fb6c2f92ca247149d5768fa341e6617d563",
+     urls = [
+-        "https://github.com/tensorflow/tensorflow/archive/v2.19.0.zip"
++        "https://github.com/tensorflow/tensorflow/archive/v2.19.1.zip"
+     ],
++    patches = [
++        "//third_party/tensorflow:update-abseil-to-20250127.patch",
++    ],
++    patch_args = ["-p1"],
+ )
+ 
+ http_archive(
+diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
+index 2b0003e..78c797e 100644
+--- a/third_party/tensorflow/BUILD
++++ b/third_party/tensorflow/BUILD
+@@ -1 +1,5 @@
+ # Needed for Bazel to treat this directory as a package
++
++exports_files([
++    "update-abseil-to-20250127.patch",
++])
+diff --git a/third_party/tensorflow/update-abseil-to-20250127.patch b/third_party/tensorflow/update-abseil-to-20250127.patch
+new file mode 100644
+index 0000000..0a7b508
+--- /dev/null
++++ b/third_party/tensorflow/update-abseil-to-20250127.patch
+@@ -0,0 +1,39 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Andrii Osipov <aosipov@anaconda.com>
++Date: Wed, 22 Jan 2026 00:00:00 -0800
++Subject: [PATCH] Update abseil to 20250127.0 for compatibility with conda
++
++This updates TensorFlow's vendored abseil from 20230802.0 to 20250127.0
++to match the conda-provided libabseil version and avoid ABI mismatches.
++
++---
++ third_party/absl/workspace.bzl | 5 +++--
++ 1 file changed, 3 insertions(+), 2 deletions(-)
++
++diff --git a/third_party/absl/workspace.bzl b/third_party/absl/workspace.bzl
++index 0000000..1111111 100644
++--- a/third_party/absl/workspace.bzl
+++++ b/third_party/absl/workspace.bzl
++@@ -7,7 +7,8 @@ def repo():
++     # Attention: tools parse and update these lines.
++     # LINT.IfChange
++-    ABSL_COMMIT = "fb3621f4f897824c0dbe0615fa94543df6192f30"
++-    ABSL_SHA256 = "0320586856674d16b0b7a4d4afb22151bdc798490bb7f295eddd8f6a62b46fea"
+++    # Updated to use abseil 20250127.0 (LTS) instead of 20230802.0 for compatibility with conda
+++    ABSL_COMMIT = "9ac7062b1860d895fb5a8cbf58c3e9ef8f674b5f"
+++    ABSL_SHA256 = "16242f394245627e508ec6bb296b433c90f8d914f73b9c026fddb905e27276e8"
++     # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake)
++ 
++     SYS_DIRS = [
++@@ -43,7 +44,7 @@ def repo():
++         system_build_file = "//third_party/absl:system.BUILD",
++         system_link_files = SYS_LINKS,
++-        strip_prefix = "abseil-cpp-{commit}".format(commit = ABSL_COMMIT),
++-        urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/{commit}.tar.gz".format(commit = ABSL_COMMIT)),
+++        strip_prefix = "abseil-cpp-20250127.0",
+++        urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/refs/tags/20250127.0.tar.gz"),
++         patch_file = [
++             "//third_party/absl:nvidia_jetson.patch",
++         ],
++-- 
++2.39.3 (Apple Git-146)
+-- 
+2.39.3 (Apple Git-146)
+

@@ -11,30 +11,38 @@ source:
   patches:
     - patches/0001-Bazel-parallel-build-removed-added-server-cleanup-af.patch
     - patches/0002-Remove-setuptools-hard-pin.patch
-    - patches/0003-Unvendor-tensorflow.patch
-    - patches/0004-Help-bazel-find-correct-SDKROOT-before-run-command.patch
+
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    #- patches/0003-Unvendor-tensorflow.patch
+    #- patches/0004-Help-bazel-find-correct-SDKROOT-before-run-command.patch
     # https://github.com/AnacondaRecipes/tensorflow-feedstock/blob/647150fb3ff128a8b7d4a15ce345c1f65b919948/recipe/patches/0020-is_signed-cannot-be-specialized.patch
     # Attribute is_signed removed from the tensorflow version 2.20, but not in the 2.19, all we can do it is just use -Wno-invalid-specialization
-    - patches/0005-add-std-is_signed-compatibility-with-new-libc.patch
+    #- patches/0005-add-std-is_signed-compatibility-with-new-libc.patch
     # BUILD.bazel:51:11: Compiling src/bpe_model.cc failed: undeclared inclusion(s) in rule '@com_google_sentencepiece//:sentencepiece_processor'
     # this rule is missing dependency declarations for the following files included by 'src/bpe_model.cc'
-    - patches/0006-fix-cppmap-errors-with-newer-clang.patch
+    #- patches/0006-fix-cppmap-errors-with-newer-clang.patch
     #import tensorflow_text
     #File "lib/python3.10/site-packages/tensorflow_text/__init__.py", line 20, in <module>
     #  from tensorflow_text.core.pybinds import tflite_registrar
     #ImportError: lib/python3.10/site-packages/tensorflow_text/core/pybinds/tflite_registrar.so: undefined symbol: _ZN4absl12lts_2023080216raw_log_internal21internal_log_functionB5cxx11E
     #- patches/0007-Override-abseil-cpp-to-use-version-20250127-instead-.patch
-    - patches/0007-unvendor-only-abseil.patch
+    #- patches/0007-unvendor-only-abseil.patch
     # error: 'StrCat' is not a member of 'absl'
     #- patches/0008-Add-str_cat-missing-includes.patch
-    - patches/0008-Added-missing-include-and-dependency-for-absl-strcat.patch
-    - patches/0009-Add-configuration-to-use-conda-bazel-toolchain.patch
-    - patches/0010-Add-missing-str_cat-in-the-vendored-tensorflow-pkg.patch
+    #- patches/0008-Added-missing-include-and-dependency-for-absl-strcat.patch
+    #- patches/0009-Add-configuration-to-use-conda-bazel-toolchain.patch
+    #- patches/0010-Add-missing-str_cat-in-the-vendored-tensorflow-pkg.patch
     # import tensorflow_text fix
     # tflite_registrar.so: undefined symbol: _ZN4absl12lts_2023080213base_internal18ThrowStdOutOfRangeEPKc
-    - patches/0011-Add-absl_base_internal-option.patch
-    - patches/0012-Increase-verbose-level-for-bazel-run.patch
-    - patches/0013-Update-abseil-in-the-tensorflow-thirparty-to-2025012.patch
+    #- patches/0011-Add-absl_base_internal-option.patch
+    #- patches/0012-Increase-verbose-level-for-bazel-run.patch
+    #- patches/0013-Update-abseil-in-the-tensorflow-thirparty-to-2025012.patch
+
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # Try to switch on tensorflow from conda environment which used abseil 20250127 inside the pkg
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    - patches/0003-Prevent-tensorflow-installation-from-the-pip.patch
+    - patches/0004-modifie-the-TensorFlow-repository-to-use-libabseil-2.patch
 
 build:
   number: 0

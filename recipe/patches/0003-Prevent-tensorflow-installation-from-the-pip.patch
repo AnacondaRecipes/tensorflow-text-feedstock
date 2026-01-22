@@ -1,0 +1,47 @@
+From 3b7adad8240d97405a283ef6e54402cc85fba9be Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 03:35:41 -0800
+Subject: [PATCH] Prevent tensorflow installation from the pip
+
+---
+ oss_scripts/configure.sh | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/oss_scripts/configure.sh b/oss_scripts/configure.sh
+index 5c554b0..4a388c9 100755
+--- a/oss_scripts/configure.sh
++++ b/oss_scripts/configure.sh
+@@ -32,18 +32,18 @@ function is_macos() {
+ # Remove .bazelrc if it already exist
+ [ -e .bazelrc ] && rm .bazelrc
+ 
+-if [[ $(pip show tensorflow) == *tensorflow* ]] ||
+-   [[ $(pip show tensorflow-macos) == *tensorflow-macos* ]] ||
+-   [[ $(pip show tf-nightly) == *tf-nightly* ]]; then
+-  echo 'Using installed tensorflow.'
+-else
+-  echo 'Installing tensorflow.'
+-  if [[ "$IS_NIGHTLY" == "nightly" ]]; then
+-    pip install tf-nightly
+-  else
+-    pip install tensorflow==2.19.0
+-  fi
+-fi
++#if [[ $(pip show tensorflow) == *tensorflow* ]] ||
++#   [[ $(pip show tensorflow-macos) == *tensorflow-macos* ]] ||
++#   [[ $(pip show tf-nightly) == *tf-nightly* ]]; then
++#  echo 'Using installed tensorflow.'
++#else
++#  echo 'Installing tensorflow.'
++#  if [[ "$IS_NIGHTLY" == "nightly" ]]; then
++#    pip install tf-nightly
++#  else
++#    pip install tensorflow==2.19.0
++#  fi
++#fi
+ 
+ # Copy the current bazelversion of TF.
+ curl https://raw.githubusercontent.com/tensorflow/tensorflow/r2.19/.bazelversion -o .bazelversion
+-- 
+2.39.3 (Apple Git-146)
+
