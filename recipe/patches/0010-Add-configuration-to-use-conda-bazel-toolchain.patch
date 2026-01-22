@@ -1,0 +1,29 @@
+From 1f92dec1eef700da16caf5b9aebc879b80fc0bd6 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 00:58:27 -0800
+Subject: [PATCH] Add configuration to use conda bazel toolchain
+
+---
+ oss_scripts/run_build.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index b4f8b94..77b8606 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -13,6 +13,12 @@ fi
+ # Run configure.
+ source oss_scripts/configure.sh
+ 
++echo "" >> .bazelrc
++echo "build --crosstool_top=//bazel_toolchain:toolchain" >> .bazelrc
++echo "build --logging=6" >> .bazelrc
++echo "build --verbose_failures" >> .bazelrc
++echo "build --define=PREFIX=${PREFIX}" >> .bazelrc
++
+ # Add conda-specific configuration after configure
+ if [[ $osname == "darwin" ]] && [[ -n "${SDKROOT}" ]]; then
+   echo "" >> .bazelrc
+-- 
+2.39.3 (Apple Git-146)
+
