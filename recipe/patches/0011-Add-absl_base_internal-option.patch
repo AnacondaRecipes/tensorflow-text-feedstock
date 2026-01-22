@@ -1,0 +1,46 @@
+From 45733a3ede698c889cdb29d37789b1e0feb1abcd Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 02:14:21 -0800
+Subject: [PATCH] Add absl_base_internal option
+
+---
+ oss_scripts/run_build.sh | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index 77b8606..3910112 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -56,8 +56,11 @@ if [[ -n "${PREFIX}" ]]; then
+   # Note: CPLUS_INCLUDE_PATH is used by the compiler to find headers, but only when explicitly
+   # referenced. Since we're using TF_SYSTEM_LIBS="com_google_absl", TensorFlow should prefer
+   # system abseil, and this helps the compiler find it.
++  # Also add as cxxopt to ensure headers are found before vendored ones
+   echo "build --action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include" >> .bazelrc
+   echo "build --host_action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include" >> .bazelrc
++  echo "build --cxxopt=-I${PREFIX}/include" >> .bazelrc
++  echo "build --host_cxxopt=-I${PREFIX}/include" >> .bazelrc
+   # Library search paths for abseil libraries
+   echo "build --action_env=LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
+   echo "build --action_env=LD_LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
+@@ -67,7 +70,9 @@ if [[ -n "${PREFIX}" ]]; then
+   echo "build --linkopt=-L${PREFIX}/lib" >> .bazelrc
+   echo "build --host_linkopt=-L${PREFIX}/lib" >> .bazelrc
+   # Explicitly link against conda-provided abseil libraries (20250127)
++  # Note: Order matters - base libraries should come first
+   echo "build --linkopt=-labsl_base" >> .bazelrc
++  echo "build --linkopt=-labsl_base_internal" >> .bazelrc
+   echo "build --linkopt=-labsl_raw_logging_internal" >> .bazelrc
+   echo "build --linkopt=-labsl_strings" >> .bazelrc
+   echo "build --linkopt=-labsl_hash" >> .bazelrc
+@@ -83,6 +88,7 @@ if [[ -n "${PREFIX}" ]]; then
+   echo "build --linkopt=-labsl_graphcycles_internal" >> .bazelrc
+   echo "build --linkopt=-labsl_kernel_timeout_internal" >> .bazelrc
+   echo "build --linkopt=-labsl_malloc_internal" >> .bazelrc
++  echo "build --linkopt=-labsl_throw_delegate" >> .bazelrc
+   # Runtime library path for abseil (works for both Linux and macOS)
+   echo "build --linkopt=-Wl,-rpath,${PREFIX}/lib" >> .bazelrc
+ fi
+-- 
+2.39.3 (Apple Git-146)
+

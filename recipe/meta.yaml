@@ -28,9 +28,11 @@ source:
     # error: 'StrCat' is not a member of 'absl'
     #- patches/0008-Add-str_cat-missing-includes.patch
     - patches/0008-Added-missing-include-and-dependency-for-absl-strcat.patch
-    #- patches/0009-link-tesorflow-from-run_build.patch
     - patches/0009-Add-configuration-to-use-conda-bazel-toolchain.patch
     - patches/0010-Add-missing-str_cat-in-the-vendored-tensorflow-pkg.patch
+    # import tensorflow_text fix
+    # tflite_registrar.so: undefined symbol: _ZN4absl12lts_2023080213base_internal18ThrowStdOutOfRangeEPKc
+    - patches/0011-Add-absl_base_internal-option.patch
 
 build:
   number: 0
