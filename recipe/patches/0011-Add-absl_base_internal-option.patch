@@ -1,14 +1,14 @@
-From 45733a3ede698c889cdb29d37789b1e0feb1abcd Mon Sep 17 00:00:00 2001
+From 4e9b0254f4875bff5b4d16df719e5429eaf68980 Mon Sep 17 00:00:00 2001
 From: Andrii Osipov <aosipov@anaconda.com>
 Date: Thu, 22 Jan 2026 02:14:21 -0800
 Subject: [PATCH] Add absl_base_internal option
 
 ---
- oss_scripts/run_build.sh | 6 ++++++
- 1 file changed, 6 insertions(+)
+ oss_scripts/run_build.sh | 5 +++++
+ 1 file changed, 5 insertions(+)
 
 diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
-index 77b8606..3910112 100755
+index 77b8606..be9f212 100755
 --- a/oss_scripts/run_build.sh
 +++ b/oss_scripts/run_build.sh
 @@ -56,8 +56,11 @@ if [[ -n "${PREFIX}" ]]; then
@@ -23,17 +23,15 @@ index 77b8606..3910112 100755
    # Library search paths for abseil libraries
    echo "build --action_env=LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
    echo "build --action_env=LD_LIBRARY_PATH=${PREFIX}/lib" >> .bazelrc
-@@ -67,7 +70,9 @@ if [[ -n "${PREFIX}" ]]; then
+@@ -67,6 +70,7 @@ if [[ -n "${PREFIX}" ]]; then
    echo "build --linkopt=-L${PREFIX}/lib" >> .bazelrc
    echo "build --host_linkopt=-L${PREFIX}/lib" >> .bazelrc
    # Explicitly link against conda-provided abseil libraries (20250127)
 +  # Note: Order matters - base libraries should come first
    echo "build --linkopt=-labsl_base" >> .bazelrc
-+  echo "build --linkopt=-labsl_base_internal" >> .bazelrc
    echo "build --linkopt=-labsl_raw_logging_internal" >> .bazelrc
    echo "build --linkopt=-labsl_strings" >> .bazelrc
-   echo "build --linkopt=-labsl_hash" >> .bazelrc
-@@ -83,6 +88,7 @@ if [[ -n "${PREFIX}" ]]; then
+@@ -83,6 +87,7 @@ if [[ -n "${PREFIX}" ]]; then
    echo "build --linkopt=-labsl_graphcycles_internal" >> .bazelrc
    echo "build --linkopt=-labsl_kernel_timeout_internal" >> .bazelrc
    echo "build --linkopt=-labsl_malloc_internal" >> .bazelrc

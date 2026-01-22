@@ -1,0 +1,25 @@
+From 225839991d37e111a9a6e5352bd6cc24deab8597 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Thu, 22 Jan 2026 02:33:54 -0800
+Subject: [PATCH] Increase verbose level for bazel run
+
+---
+ oss_scripts/run_build.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/oss_scripts/run_build.sh b/oss_scripts/run_build.sh
+index be9f212..4e7cf90 100755
+--- a/oss_scripts/run_build.sh
++++ b/oss_scripts/run_build.sh
+@@ -117,7 +117,7 @@ fi
+ 
+ # Build the pip package.
+ # Execute only one action at a time instead of utilizing multiple parallel jobs
+-bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
++bazel run ${BUILD_ARGS[@]} --enable_runfiles --jobs=1 --subcommands //oss_scripts/pip_package:build_pip_package -- "$(realpath .)"
+ 
+ if [ -n "${AUDITWHEEL_PLATFORM}" ]; then
+   echo $(date) : "=== Auditing wheel"
+-- 
+2.39.3 (Apple Git-146)
+
