@@ -1,6 +1,9 @@
 #!/bin/bash
 set -ex
 
+bazel clean --expunge
+bazel shutdown
+
 source gen-bazel-toolchain
 
 export PATH=$PREFIX/bin:$PATH

@@ -42,8 +42,7 @@ build:
     - zlib                                 # [osx]
   # Latest version of supported python 3.12, look requirements_lock files
   skip: true  # [py>312]
-  # TODO: add support for windows
-  skip: true  # [win]
+  skip: true  # [unix]
 
 requirements:
   build:
