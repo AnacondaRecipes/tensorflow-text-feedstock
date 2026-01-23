@@ -1,0 +1,127 @@
+From 2421eba3a6352c3562deff1d4900ac6f7866bd11 Mon Sep 17 00:00:00 2001
+From: Andrii Osipov <aosipov@anaconda.com>
+Date: Mon, 19 Jan 2026 05:39:06 -0800
+Subject: [PATCH] Remove setuptools hard pin
+
+---
+ oss_scripts/configure.sh                           |  4 +++-
+ oss_scripts/pip_package/BUILD                      | 13 ++++---------
+ oss_scripts/pip_package/requirements.in            |  2 +-
+ oss_scripts/pip_package/requirements_lock_3_10.txt |  4 +---
+ oss_scripts/pip_package/requirements_lock_3_11.txt |  4 +---
+ oss_scripts/pip_package/requirements_lock_3_12.txt |  4 +---
+ oss_scripts/pip_package/requirements_lock_3_9.txt  |  4 +---
+ 7 files changed, 12 insertions(+), 23 deletions(-)
+
+diff --git a/oss_scripts/configure.sh b/oss_scripts/configure.sh
+index 9e0c0a7..6d97812 100755
+--- a/oss_scripts/configure.sh
++++ b/oss_scripts/configure.sh
+@@ -76,7 +76,9 @@ if [[ "$TF_VERSION" == *"rc"* ]]; then
+   REQUIREMENTS_EXTRA_FLAGS="$REQUIREMENTS_EXTRA_FLAGS --pre"
+ fi
+ 
+-bazel run //oss_scripts/pip_package:requirements.update -- $REQUIREMENTS_EXTRA_FLAGS
++# Skip requirements update during conda build - use vendored lock files
++# Original: bazel run //oss_scripts/pip_package:requirements.update -- $REQUIREMENTS_EXTRA_FLAGS
++echo "Skipping requirements.update (using vendored lock files from upstream)"
+ 
+ TF_ABIFLAG=$(bazel run //oss_scripts/pip_package:tensorflow_build_info -- abi)
+ SHARED_LIBRARY_NAME="libtensorflow_framework.so.2"
+diff --git a/oss_scripts/pip_package/BUILD b/oss_scripts/pip_package/BUILD
+index ff9c51d..7d742d1 100644
+--- a/oss_scripts/pip_package/BUILD
++++ b/oss_scripts/pip_package/BUILD
+@@ -6,16 +6,11 @@ package(default_visibility = ["//visibility:private"])
+ 
+ licenses(["notice"])  # Apache 2.0
+ 
+-compile_pip_requirements(
++# compile_pip_requirements(
++# Disabled for conda build - use existing lock files from upstream
++filegroup(
+     name = "requirements",
+-    extra_args = [
+-        "--allow-unsafe",
+-        "--build-isolation",
+-        "--rebuild",
+-    ],
+-    generate_hashes = True,
+-    requirements_in = "@release_or_nightly//:requirements.in",
+-    requirements_txt = REQUIREMENTS,
++    srcs = [],
+ )
+ 
+ py_binary(
+diff --git a/oss_scripts/pip_package/requirements.in b/oss_scripts/pip_package/requirements.in
+index 9cc9f75..d43fbb3 100644
+--- a/oss_scripts/pip_package/requirements.in
++++ b/oss_scripts/pip_package/requirements.in
+@@ -1,4 +1,4 @@
+-setuptools==70.0.0
++setuptools>=70
+ dm-tree==0.1.8  # Limit for macos support.
+ numpy
+ protobuf==4.25.3  # b/397977335 - Fix crash on python 3.9, 3.10.
+diff --git a/oss_scripts/pip_package/requirements_lock_3_10.txt b/oss_scripts/pip_package/requirements_lock_3_10.txt
+index 8ad5839..d99b975 100644
+--- a/oss_scripts/pip_package/requirements_lock_3_10.txt
++++ b/oss_scripts/pip_package/requirements_lock_3_10.txt
+@@ -883,9 +883,7 @@ zipp==3.21.0 \
+     # via etils
+ 
+ # The following packages are considered to be unsafe in a requirements file:
+-setuptools==70.0.0 \
+-    --hash=sha256:54faa7f2e8d2d11bcd2c07bed282eef1046b5c080d1c32add737d7b5817b1ad4 \
+-    --hash=sha256:f211a66637b8fa059bb28183da127d4e86396c991a942b028c6650d4319c3fd0
++setuptools>=70.0.0
+     # via
+     #   -r requirements.in
+     #   tensorboard
+diff --git a/oss_scripts/pip_package/requirements_lock_3_11.txt b/oss_scripts/pip_package/requirements_lock_3_11.txt
+index 02f8a8d..dcbbd99 100644
+--- a/oss_scripts/pip_package/requirements_lock_3_11.txt
++++ b/oss_scripts/pip_package/requirements_lock_3_11.txt
+@@ -882,9 +882,7 @@ zipp==3.21.0 \
+     # via etils
+ 
+ # The following packages are considered to be unsafe in a requirements file:
+-setuptools==70.0.0 \
+-    --hash=sha256:54faa7f2e8d2d11bcd2c07bed282eef1046b5c080d1c32add737d7b5817b1ad4 \
+-    --hash=sha256:f211a66637b8fa059bb28183da127d4e86396c991a942b028c6650d4319c3fd0
++setuptools>=70.0.0
+     # via
+     #   -r requirements.in
+     #   tensorboard
+diff --git a/oss_scripts/pip_package/requirements_lock_3_12.txt b/oss_scripts/pip_package/requirements_lock_3_12.txt
+index 72256a1..2dca317 100644
+--- a/oss_scripts/pip_package/requirements_lock_3_12.txt
++++ b/oss_scripts/pip_package/requirements_lock_3_12.txt
+@@ -864,9 +864,7 @@ zipp==3.21.0 \
+     # via etils
+ 
+ # The following packages are considered to be unsafe in a requirements file:
+-setuptools==70.0.0 \
+-    --hash=sha256:54faa7f2e8d2d11bcd2c07bed282eef1046b5c080d1c32add737d7b5817b1ad4 \
+-    --hash=sha256:f211a66637b8fa059bb28183da127d4e86396c991a942b028c6650d4319c3fd0
++setuptools>=70.0.0
+     # via
+     #   -r requirements.in
+     #   tensorboard
+diff --git a/oss_scripts/pip_package/requirements_lock_3_9.txt b/oss_scripts/pip_package/requirements_lock_3_9.txt
+index d9a2275..9ce070c 100644
+--- a/oss_scripts/pip_package/requirements_lock_3_9.txt
++++ b/oss_scripts/pip_package/requirements_lock_3_9.txt
+@@ -830,9 +830,7 @@ zipp==3.21.0 \
+     #   importlib-resources
+ 
+ # The following packages are considered to be unsafe in a requirements file:
+-setuptools==70.0.0 \
+-    --hash=sha256:54faa7f2e8d2d11bcd2c07bed282eef1046b5c080d1c32add737d7b5817b1ad4 \
+-    --hash=sha256:f211a66637b8fa059bb28183da127d4e86396c991a942b028c6650d4319c3fd0
++setuptools>=70.0.0
+     # via
+     #   -r requirements.in
+     #   tensorboard
+-- 
+2.39.3 (Apple Git-146)

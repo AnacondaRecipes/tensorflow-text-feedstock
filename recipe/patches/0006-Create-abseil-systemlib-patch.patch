@@ -1,0 +1,331 @@
+From 16ffddf0a8c2c8198fd6183337511e0428ff2051 Mon Sep 17 00:00:00 2001
+From: Eric Lundby <Eric.Lundby@gmail.com>
+Date: Thu, 22 Jan 2026 11:13:42 -0700
+Subject: [PATCH] Create abseil systemlib patch for TensorFlow
+
+Creates abseil_systemlib.patch that gets applied to the TensorFlow source
+during Bazel build. This patch:
+- Updates system.absl.*.BUILD files to link against conda's libabseil
+- Adds missing str_cat.h include to TF's status_macros.h
+- Fixes linkopts for abseil libraries
+
+Consolidated patches from tensorflow-feedstock. 
+---
+diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
+--- a/third_party/tensorflow/BUILD
++++ b/third_party/tensorflow/BUILD
+@@ -1,4 +1,4 @@
+ # Needed for Bazel to treat this directory as a package
+ 
+ # Export patch files for use by http_archive rules
+-exports_files(["tflite_tensor_view_fix.patch"])
++exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch"])
+diff --git a/third_party/tensorflow/abseil_systemlib.patch b/third_party/tensorflow/abseil_systemlib.patch
+new file mode 100644
+--- /dev/null
++++ b/third_party/tensorflow/abseil_systemlib.patch
+@@ -0,0 +1,304 @@
++diff -ruN a/third_party/absl/system.absl.base.BUILD b/third_party/absl/system.absl.base.BUILD
++--- a/third_party/absl/system.absl.base.BUILD	2025-03-05 15:02:00
+++++ b/third_party/absl/system.absl.base.BUILD	2026-01-21 15:07:56
++@@ -17,12 +17,31 @@
++ 
++ cc_library(
++     name = "log_severity",
++-    linkopts = ["-labsl_log_severity"],
+++    linkopts = [
+++        "-labsl_log_severity",
+++        "-labsl_log_internal_check_op",
+++        "-labsl_log_internal_message",
+++        "-labsl_log_internal_nullguard",
+++    ],
++ )
++ 
++ cc_library(
+++    name = "nullability",
+++    deps = [
+++        ":core_headers",
+++        "//absl/meta:type_traits",
+++    ],
+++)
+++
+++
+++cc_library(
++     name = "raw_logging_internal",
++-    linkopts = ["-labsl_raw_logging_internal"],
+++    linkopts = [
+++        "-labsl_raw_logging_internal",
+++        "-labsl_log_internal_check_op",
+++        "-labsl_log_internal_message",
+++        "-labsl_log_internal_nullguard",
+++    ],
++     visibility = [
++         "//absl:__subpackages__",
++     ],
++@@ -99,9 +118,27 @@
++ )
++ 
++ cc_library(
+++    name = "prefetch",
+++    deps = [
+++        ":config",
+++        ":core_headers",
+++    ],
+++)
+++
+++cc_library(
++     name = "strerror",
++     linkopts = ["-labsl_strerror"],
++     visibility = [
++         "//absl:__subpackages__",
++     ],
++ )
+++
+++cc_library(
+++    name = "tracing_internal",
+++    linkopts = ["-labsl_tracing_internal"],
+++    deps = [
+++        ":config",
+++        ":core_headers",
+++    ],
+++)
+++
++diff -ruN a/third_party/absl/system.absl.crc.BUILD b/third_party/absl/system.absl.crc.BUILD
++--- a/third_party/absl/system.absl.crc.BUILD	1969-12-31 17:00:00
+++++ b/third_party/absl/system.absl.crc.BUILD	2026-01-21 15:07:56
++@@ -0,0 +1,70 @@
+++load("@rules_cc//cc:defs.bzl", "cc_library")
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++cc_library(
+++    name = "crc32c",
+++    linkopts = [
+++        "-labsl_crc32c",
+++        "-labsl_crc_cord_state",
+++        "-labsl_crc_cpu_detect",
+++        "-labsl_crc_internal",
+++    ],
+++    deps = [
+++        ":cpu_detect",
+++        ":crc_internal",
+++        ":non_temporal_memcpy",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++        "//absl/base:endian",
+++        "//absl/base:prefetch",
+++        "//absl/strings",
+++        "//absl/strings:str_format",
+++    ],
+++)
+++
+++cc_library(
+++    name = "cpu_detect",
+++    visibility = ["//visibility:private"],
+++    deps = [
+++        "//absl/base",
+++        "//absl/base:config",
+++    ],
+++)
+++
+++cc_library(
+++    name = "crc_internal",
+++    visibility = ["//visibility:private"],
+++    deps = [
+++        ":cpu_detect",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++        "//absl/base:endian",
+++        "//absl/base:prefetch",
+++        "//absl/base:raw_logging_internal",
+++        "//absl/memory",
+++        "//absl/numeric:bits",
+++    ],
+++)
+++
+++cc_library(
+++    name = "non_temporal_memcpy",
+++    visibility = [
+++        ":__pkg__",
+++    ],
+++    deps = [
+++        ":non_temporal_arm_intrinsics",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++    ],
+++)
+++
+++cc_library(
+++    name = "non_temporal_arm_intrinsics",
+++    visibility = [
+++        ":__pkg__",
+++    ],
+++    deps = [
+++        "//absl/base:config",
+++    ],
+++)
++diff -ruN a/third_party/absl/system.absl.flags.BUILD b/third_party/absl/system.absl.flags.BUILD
++--- a/third_party/absl/system.absl.flags.BUILD	2025-03-05 15:02:00
+++++ b/third_party/absl/system.absl.flags.BUILD	2026-01-21 15:07:56
++@@ -97,7 +97,7 @@
++ 
++ cc_library(
++     name = "flag",
++-    linkopts = ["-labsl_flags"],
+++    linkopts = ["-labsl_log_flags"],
++     deps = [
++         ":config",
++         ":flag_internal",
++diff -ruN a/third_party/absl/system.absl.log.BUILD b/third_party/absl/system.absl.log.BUILD
++--- a/third_party/absl/system.absl.log.BUILD	1969-12-31 17:00:00
+++++ b/third_party/absl/system.absl.log.BUILD	2026-01-21 15:07:56
++@@ -0,0 +1,40 @@
+++load("@rules_cc//cc:defs.bzl", "cc_library")
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++cc_library(
+++    name = "absl_log",
+++    linkopts = [
+++        "-labsl_vlog_config_internal",
+++        "-labsl_log_internal_conditions",
+++        "-labsl_log_internal_check_op",
+++        "-labsl_log_internal_message",
+++        "-labsl_log_internal_nullguard",
+++    ],
+++)
+++
+++cc_library(
+++    name = "die_if_null",
+++    linkopts = ["-labsl_die_if_null"],
+++    deps = [
+++        ":log",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++        "//absl/strings",
+++    ],
+++)
+++
+++cc_library(
+++    name = "check",
+++    linkopts = [
+++        "-labsl_vlog_config_internal",
+++        "-labsl_log_internal_check_op",
+++        "-labsl_log_internal_message",
+++        "-labsl_log_internal_nullguard",
+++    ],
+++)
+++
+++alias(
+++    name = "log",
+++    actual = ":absl_log",
+++)
++diff -ruN a/third_party/absl/system.absl.strings.BUILD b/third_party/absl/system.absl.strings.BUILD
++--- a/third_party/absl/system.absl.strings.BUILD	2025-03-05 15:02:00
+++++ b/third_party/absl/system.absl.strings.BUILD	2026-01-21 15:07:56
++@@ -25,8 +25,20 @@
++ )
++ 
++ cc_library(
+++    name = "string_view",
+++    linkopts = ["-labsl_string_view"],
+++    deps = [
+++        "//absl/base",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++        "//absl/base:nullability",
+++        "//absl/base:throw_delegate",
+++    ],
+++)
+++
+++cc_library(
++     name = "cord",
++-    linkopts = ["-labsl_cord"],
+++    linkopts = ["-labsl_cord", "-labsl_cordz_functions", "-labsl_cordz_info", "-labsl_cord_internal"],
++     deps = [
++         ":str_format",
++         "//absl/container:compressed_tuple",
++diff -ruN a/third_party/absl/system.absl.synchronization.BUILD b/third_party/absl/system.absl.synchronization.BUILD
++--- a/third_party/absl/system.absl.synchronization.BUILD	2025-03-05 15:02:00
+++++ b/third_party/absl/system.absl.synchronization.BUILD	2026-01-21 15:07:56
++@@ -17,13 +17,28 @@
++ )
++ 
++ cc_library(
+++    name = "kernel_timeout_internal",
+++    visibility = [
+++    ],
+++    deps = [
+++        "//absl/base",
+++        "//absl/base:config",
+++        "//absl/base:core_headers",
+++        "//absl/base:raw_logging_internal",
+++        "//absl/time",
+++    ],
+++)
+++
+++cc_library(
++     name = "synchronization",
++     linkopts = [
++         "-labsl_synchronization",
+++        "-labsl_kernel_timeout_internal",
++         "-pthread",
++     ],
++     deps = [
++         ":graphcycles_internal",
+++        ":kernel_timeout_internal",
++         "//absl/base",
++         "//absl/base:atomic_hook",
++         "//absl/base:dynamic_annotations",
++diff -ruN a/third_party/absl/workspace.bzl b/third_party/absl/workspace.bzl
++--- a/third_party/absl/workspace.bzl	2025-03-05 15:02:00
+++++ b/third_party/absl/workspace.bzl	2026-01-21 15:07:56
++@@ -14,12 +14,14 @@
++     SYS_DIRS = [
++         "algorithm",
++         "base",
+++        "crc",
++         "cleanup",
++         "container",
++         "debugging",
++         "flags",
++         "functional",
++         "hash",
+++        "log",
++         "memory",
++         "meta",
++         "numeric",
++diff -ruN a/third_party/xla/third_party/tsl/third_party/absl/system.absl.flags.BUILD b/third_party/xla/third_party/tsl/third_party/absl/system.absl.flags.BUILD
++--- a/third_party/xla/third_party/tsl/third_party/absl/system.absl.flags.BUILD	2025-03-05 15:02:00
+++++ b/third_party/xla/third_party/tsl/third_party/absl/system.absl.flags.BUILD	2026-01-21 15:07:56
++@@ -97,7 +97,7 @@
++ 
++ cc_library(
++     name = "flag",
++-    linkopts = ["-labsl_flags"],
+++    linkopts = ["-labsl_log_flags"],
++     deps = [
++         ":config",
++         ":flag_internal",
++diff -ruN a/tensorflow/lite/kernels/shim/status_macros.h b/tensorflow/lite/kernels/shim/status_macros.h
++--- a/tensorflow/lite/kernels/shim/status_macros.h	2025-03-05 15:02:00
+++++ b/tensorflow/lite/kernels/shim/status_macros.h	2026-01-22 10:00:00
++@@ -16,6 +16,7 @@
++ #define TENSORFLOW_LITE_KERNELS_SHIM_STATUS_MACROS_H_
++ 
++ #include "absl/status/status.h"
+++#include "absl/strings/str_cat.h"
++ 
++ // A few macros to help with propagating status.
++ // They are mainly adapted from the ones in  tensorflow/core/platform/errors.h
++diff -ruN a/tensorflow/core/kernels/batching_util/BUILD b/tensorflow/core/kernels/batching_util/BUILD
++--- a/tensorflow/core/kernels/batching_util/BUILD	2025-03-05 15:02:00
+++++ b/tensorflow/core/kernels/batching_util/BUILD	2026-01-21 15:07:56
++@@ -132,6 +132,7 @@
++     name = "batch_scheduler",
++     srcs = ["batch_scheduler.cc"],
++     hdrs = ["batch_scheduler.h"],
+++    linkopts = ["-labsl_tracing_internal"],
++     deps = [
++         "//tensorflow/core:lib",
++         "@com_google_absl//absl/status",
