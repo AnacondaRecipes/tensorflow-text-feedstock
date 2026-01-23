@@ -13,13 +13,8 @@ set BAZEL_VC="%VSINSTALLDIR%/VC"
 set BAZEL_LLVM=%BUILD_PREFIX:\=/%/Library/
 set CLANG_COMPILER_PATH=%BUILD_PREFIX:\=/%/Library/bin/clang.exe
 
-REM Convert paths to Unix format for use in bash scripts
-FOR /F "delims=" %%i in ('cygpath.exe -u "%PREFIX%"') DO set "pfx=%%i"
-if errorlevel 1 exit 1
-FOR /F "delims=" %%i in ('cygpath.exe -u "%PREFIX%\Library\bin"') DO set "pfx_lib_bin=%%i"
-if errorlevel 1 exit 1
-FOR /F "delims=" %%i in ('cygpath.exe -u "%PREFIX%\bin"') DO set "pfx_bin=%%i"
-if errorlevel 1 exit 1
+REM Convert PREFIX to forward-slash format for .bazelrc.user
+set "pfx=%PREFIX:\=/%"
 
 REM Tell Bazel to use conda-provided system abseil (critical for ABI compatibility)
 set "TF_SYSTEM_LIBS=com_google_absl"
@@ -59,10 +54,16 @@ echo build --copt=-Wno-invalid-specialization
 echo build --host_copt=-Wno-invalid-specialization
 ) >> .bazelrc.user
 
-REM Run the build script with PATH and environment variables exported to bash
-REM Add all possible bazel locations to PATH (Scripts, Library/bin, and bin)
-bash -c "export PATH=%pfx_lib_bin%:%pfx_bin%:$PATH && which bazel && bazel version && export TF_SYSTEM_LIBS=com_google_absl && ./oss_scripts/run_build.sh"
+REM Copy Windows batch files to replace bash scripts in source
+copy /Y "%RECIPE_DIR%\configure.bat" oss_scripts\configure.bat
 if errorlevel 1 exit 1
+copy /Y "%RECIPE_DIR%\run_build.bat" oss_scripts\run_build.bat
+if errorlevel 1 exit 1
+
+REM Run the build script (which will call configure.bat)
+call oss_scripts\run_build.bat
+if errorlevel 1 exit 1
+
 REM Install the wheel
 %PYTHON% -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
 if errorlevel 1 exit 1
