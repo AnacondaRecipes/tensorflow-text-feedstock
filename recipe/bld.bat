@@ -1,6 +1,17 @@
 @echo on
 setlocal enabledelayedexpansion
 
+@REM Ensure symlinks are allowed
+echo test> symlink_test.txt
+mklink symlink_test2.txt symlink_test.txt
+
+IF %ERRORLEVEL% NEQ 0 (
+    ECHO Enable Developer mode to enable symlinks %ERRORLEVEL%
+    exit 1
+)
+rm -f symlink_test2.txt
+rm -f symlink_test.txt
+
 REM Clean and shutdown Bazel
 bazel clean --expunge
 if errorlevel 1 exit 1
@@ -53,6 +64,17 @@ echo # Suppress warnings for TensorFlow's std::is_signed specializations
 echo build --copt=-Wno-invalid-specialization
 echo build --host_copt=-Wno-invalid-specialization
 ) >> .bazelrc.user
+
+:: Python settings for Bazel
+set PYTHON_BIN_PATH=%PYTHON%
+set PYTHON_LIB_PATH=%SP_DIR%
+set USE_DEFAULT_PYTHON_LIB_PATH=1
+set TF_PYTHON_VERSION=%PY_VER%
+
+:: The tensorflow-io-gcs-filesystem 0.23.0 below are needed for TF wheel testing. Skip to prevent building it.
+:: 0.23.0 Requires-Python >=3.6, <3.10
+SET PIP_NO_BINARY=tensorflow-io-gcs-filesystem
+set TF_USE_MODULAR_FILESYSTEM=0
 
 REM Copy Windows batch files to replace bash scripts in source
 copy /Y "%RECIPE_DIR%\configure.bat" oss_scripts\configure.bat

@@ -21,6 +21,8 @@ source:
     - patches/0007-Apply-patches-to-TensorFlow-archive.patch
     # Exclude vendored abseil headers from pypi_tensorflow to use system abseil
     - patches/0008-Exclude-vendored-abseil-from-tf-headers.patch
+    # Remove tensorflow-io-gcs-filesystem from TensorFlow requirements to avoid Windows build issues
+    - patches/0009-Prevent-tensorflow-io-gcs-filesystem-install-on-win.patch
 
 build:
   number: 0
@@ -61,6 +63,7 @@ requirements:
     - tensorflow ==2.19.1
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
     - libabseil 20250127.*
+    - colorama >=0.4.4  # [win]
   run:
     - python
     - tensorflow >=2.19.0,<2.20    
