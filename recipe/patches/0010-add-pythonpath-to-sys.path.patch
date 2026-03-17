@@ -1,0 +1,25 @@
+diff --git a/oss_scripts/pip_package/tensorflow_build_info.py b/oss_scripts/pip_package/tensorflow_build_info.py
+index 49b8e22..f23ef52 100644
+--- a/oss_scripts/pip_package/tensorflow_build_info.py
++++ b/oss_scripts/pip_package/tensorflow_build_info.py
+@@ -29,6 +29,7 @@
+ 
+ """Helper script to get basic tensorflow module information needed for build."""
+ import sys
++sys.path.insert(0, "CONDA_TF_SITE_PACKAGES")
+ import tensorflow as tf
+ 
+ arg = sys.argv[1]
+diff --git a/tensorflow_text/core/kernels/BUILD b/tensorflow_text/core/kernels/BUILD
+index 8aba036..6b2975c 100644
+--- a/tensorflow_text/core/kernels/BUILD
++++ b/tensorflow_text/core/kernels/BUILD
+@@ -684,6 +684,8 @@ tf_cc_library(
+         "@com_google_absl//absl/strings",
+         "@icu//:nfkc",
+         "@icu//:nfkc_cf",
++        "@com_google_protobuf//:protobuf",
++        "@com_google_protobuf//:cc_wkt_protos",
+     ],
+ )
+ 

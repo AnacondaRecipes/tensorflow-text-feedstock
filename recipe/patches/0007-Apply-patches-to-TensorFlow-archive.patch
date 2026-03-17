@@ -9,17 +9,48 @@ Apply the patches created in 0005 and 0006 to the TensorFlow repository during B
  1 file changed, 5 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
+index 0f454bd..43f80fa 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
-@@ -58,6 +58,11 @@ http_archive(
-     name = "org_tensorflow",
-     strip_prefix = "tensorflow-2.19.0",
-     sha256 = "c86c09eeec97253fa02cd65733042b1e77dcb9a90cffbe75b6d53e7d0653af3a",
+@@ -71,7 +71,11 @@ http_archive(
+     sha256 = "213edf03ac7c4e74d8eb2074216ae8c8ae4f325c6bc22efd16cfdeed2073bd66",
+     strip_prefix = "tensorflow-2.20.0",
+     patch_args = ["-p1"],
+-    patches = ["//third_party/tensorflow:tensorflow.core.BUILD.patch"],
 +    patches = [
-+        "//third_party/tensorflow:tflite_tensor_view_fix.patch",
++        "//third_party/tensorflow:tensorflow.core.BUILD.patch",
 +        "//third_party/tensorflow:abseil_systemlib.patch",
++        "//third_party/tensorflow:protobuf_systemlib.patch",
 +    ],
-+    patch_args = ["-p1"],
      urls = [
-         "https://github.com/tensorflow/tensorflow/archive/v2.19.0.zip"
+         "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.20.0.zip",
      ],
+@@ -150,6 +154,28 @@ load("//third_party/tensorflow:tf_configure.bzl", "tf_configure")
+ 
+ tf_configure()
+ 
++new_local_repository(
++    name = "pypi_tensorflow",
++    path = "__SYSTEM_TF_PATH__",
++    build_file_content = """
++cc_library(
++    name = "tf_header_lib",
++    hdrs = glob(["include/**/*"]),
++    strip_include_prefix = "include/",
++    visibility = ["//visibility:public"],
++)
++cc_library(
++    name = "libtensorflow_framework",
++    srcs = select({
++        "@bazel_tools//src/conditions:darwin": ["libtensorflow_framework.2.dylib"],
++        "//conditions:default": ["libtensorflow_framework.so.2"],
++    }),
++    visibility = ["//visibility:public"],
++)
++""",
++)
++
++
+ load("@pypi//:requirements.bzl", "install_deps")
+ 
+ install_deps()

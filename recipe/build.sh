@@ -1,12 +1,21 @@
 #!/bin/bash
 set -ex
 
+# cp $RECIPE_DIR/patches/protobuf.patch third_party/tensorflow/protobuf.patch
+# mkdir -p stub_includes/google/protobuf
+# cp third_party/tensorflow/abseil_if_constexpr.h stub_includes/absl/utility/internal/if_constexpr.h
+# cp -R $RECIPE_DIR/protobuf_stub/arena.h stub_includes/google/protobuf/arena.h
+# STUB_DIR=stub_includes
+# echo "build --copt=-isystem${STUB_DIR}" >> .bazelrc.user
+# echo "build --host_copt=-isystem${STUB_DIR}" >> .bazelrc.user
+
 source gen-bazel-toolchain
 
 export PATH=$PREFIX/bin:$PATH
 
 # Tell Bazel to use conda-provided system abseil (critical for ABI compatibility)
-export TF_SYSTEM_LIBS="com_google_absl"
+export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf"
+export SYSTEM_LIBS_PREFIX="${PREFIX}"
 
 if [[ "${target_platform}" == osx-* ]]; then
   export LDFLAGS="${LDFLAGS} -lz -framework CoreFoundation"
@@ -27,10 +36,10 @@ build --define=PROTOBUF_INCLUDE_PATH=${PREFIX}/include
 build --define=with_cross_compiler_support=true
 build --repo_env=GRPC_BAZEL_DIR=${PREFIX}/share/bazel/grpc/bazel
 
-# Use system abseil instead of vendored version (critical for ABI compatibility)
-build --repo_env=TF_SYSTEM_LIBS=com_google_absl
-build --action_env=TF_SYSTEM_LIBS=com_google_absl
-build --host_action_env=TF_SYSTEM_LIBS=com_google_absl
+# Use system abseil and protobuf instead of vendored version (critical for ABI compatibility)
+build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
+build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
+build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
 
 # Tell compiler/linker to find abseil in conda's paths
 build --action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include
@@ -52,11 +61,51 @@ EOF
 if [[ "${target_platform}" == osx-* ]]; then
   cat >> .bazelrc.user <<EOF
 
+# macOS: redirect apple-toolchain config away from local_config_apple_cc
+# (which is an empty stub when BAZEL_NO_APPLE_CPP_TOOLCHAIN=1 is set)
+build:apple-toolchain --apple_crosstool_top=//bazel_toolchain:toolchain
+build:apple-toolchain --crosstool_top=//bazel_toolchain:toolchain
+build:apple-toolchain --host_crosstool_top=//bazel_toolchain:toolchain
+
 # macOS: Use flat namespace for runtime symbol resolution
 build --linkopt=-Wl,-flat_namespace
 build --linkopt=-Wl,-undefined,dynamic_lookup
 EOF
 fi
+
+TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
+
+# Create BUILD file for system tensorflow
+cat > "${TF_PATH}/BUILD.bazel" << 'EOF'
+cc_library(
+    name = "tf_header_lib",
+    hdrs = glob(["include/**/*"]),
+    strip_include_prefix = "include/",
+    visibility = ["//visibility:public"],
+)
+cc_library(
+    name = "libtensorflow_framework",
+    srcs = select({
+        "@bazel_tools//src/conditions:darwin": ["libtensorflow_framework.2.dylib"],
+        "//conditions:default": ["libtensorflow_framework.so.2"],
+    }),
+    visibility = ["//visibility:public"],
+    # Required by release_or_nightly repository rule
+)
+py_library(
+    name = "pkg",
+    visibility = ["//visibility:public"],
+)
+EOF
+
+# Also need a WORKSPACE file for Bazel to treat it as a repository root
+touch "${TF_PATH}/WORKSPACE"
+
+echo "build --override_repository=pypi_tensorflow=${TF_PATH}" >> .bazelrc.user
+echo "build --features=-layering_check" >> .bazelrc.user
+PY_SITE=$(${PYTHON} -c "import site; print(site.getsitepackages()[0])")
+sed -i '' "s|CONDA_TF_SITE_PACKAGES|${PY_SITE}|g" \
+  oss_scripts/pip_package/tensorflow_build_info.py
 
 ./oss_scripts/run_build.sh
 
