@@ -9,10 +9,10 @@ Apply the patches created in 0005 and 0006 to the TensorFlow repository during B
  1 file changed, 5 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 0f454bd..43f80fa 100644
+index 0f454bd..0ee9fee 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
-@@ -71,7 +71,11 @@ http_archive(
+@@ -71,7 +71,12 @@ http_archive(
      sha256 = "213edf03ac7c4e74d8eb2074216ae8c8ae4f325c6bc22efd16cfdeed2073bd66",
      strip_prefix = "tensorflow-2.20.0",
      patch_args = ["-p1"],
@@ -21,11 +21,12 @@ index 0f454bd..43f80fa 100644
 +        "//third_party/tensorflow:tensorflow.core.BUILD.patch",
 +        "//third_party/tensorflow:abseil_systemlib.patch",
 +        "//third_party/tensorflow:protobuf_systemlib.patch",
++        "//third_party/tensorflow:disable_pywrap.patch",
 +    ],
      urls = [
          "https://github.com/tensorflow/tensorflow/archive/refs/tags/v2.20.0.zip",
      ],
-@@ -150,6 +154,28 @@ load("//third_party/tensorflow:tf_configure.bzl", "tf_configure")
+@@ -150,6 +155,28 @@ load("//third_party/tensorflow:tf_configure.bzl", "tf_configure")
  
  tf_configure()
  

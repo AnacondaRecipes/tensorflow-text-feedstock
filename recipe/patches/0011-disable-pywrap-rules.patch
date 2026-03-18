@@ -1,0 +1,38 @@
+From 72fbba3d20f4616d7312b5e2b7f79daf6e82f2fa Fri Mar 13 11:11:00 2026
+From: Valentyna Khomits <vkhomits@gmail.com>
+Date: Fri, 13 Mar 2026 11:11:00 +0200
+Subject: [PATCH] Create protobuf patch for TensorFlow
+
+---
+diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
+--- a/third_party/tensorflow/BUILD
++++ b/third_party/tensorflow/BUILD
+@@ -1,4 +1,4 @@
+ # Needed for Bazel to treat this directory as a package
+ 
+ # Export patch files for use by http_archive rules
+-exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch", "protobuf_systemlib.patch"])
++exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch", "protobuf_systemlib.patch", "disable_pywrap.patch"])
+diff --git a/third_party/tensorflow/disable_pywrap.patch b/third_party/tensorflow/disable_pywrap.patch
+new file mode 100644
+--- /dev/null
++++ b/third_party/tensorflow/disable_pywrap.patch
+@@ -0,0 +1,18 @@
++diff --git a/third_party/py/python_repo.bzl b/third_party/py/python_repo.bzl
++index c1075b1491d..e2397cd5f83 100644
++--- a/third_party/py/python_repo.bzl
+++++ b/third_party/py/python_repo.bzl
++@@ -74,9 +74,10 @@ Please check python_init_repositories() in your WORKSPACE file.
++     else:
++         requirements_with_local_wheels = str(requirements)
++ 
++-    use_pywrap_rules = bool(
++-        ctx.os.environ.get("USE_PYWRAP_RULES", False),
++-    )
+++    # Disabled for conda build: pywrap_library creates libpybinds_library_common
+++    # which statically embeds TF proto descriptors causing duplicate registration
+++    # with libtensorflow_framework. TODO: remove when TF and TF-text are built together.
+++    use_pywrap_rules = False
++     
++     if use_pywrap_rules:
++         print("!!!Using pywrap rules instead of directly creating .so objects!!!")  # buildifier: disable=print

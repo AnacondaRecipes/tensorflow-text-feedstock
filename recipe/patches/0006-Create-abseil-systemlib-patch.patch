@@ -24,7 +24,7 @@ diff --git a/third_party/tensorflow/abseil_systemlib.patch b/third_party/tensorf
 new file mode 100644
 --- /dev/null
 +++ b/third_party/tensorflow/abseil_systemlib.patch
-@@ -0,0 +1,353 @@
+@@ -0,0 +1,414 @@
 +diff -ruN a/third_party/xla/third_party/absl/system.absl.base.BUILD b/third_party/xla/third_party/absl/system.absl.base.BUILD
 +--- a/third_party/xla/third_party/absl/system.absl.base.BUILD	2025-03-05 15:02:00
 ++++ b/third_party/xla/third_party/absl/system.absl.base.BUILD	2026-01-21 15:07:56
@@ -246,12 +246,11 @@ new file mode 100644
 +diff -ruN a/third_party/xla/third_party/absl/system.absl.strings.BUILD b/third_party/xla/third_party/absl/system.absl.strings.BUILD
 +--- a/third_party/xla/third_party/absl/system.absl.strings.BUILD	2025-03-05 15:02:00
 ++++ b/third_party/xla/third_party/absl/system.absl.strings.BUILD	2026-01-21 15:07:56
-+@@ -25,8 +25,20 @@
++@@ -25,8 +25,19 @@
 + )
 + 
 + cc_library(
 ++    name = "string_view",
-++    linkopts = ["-labsl_string_view"],
 ++    deps = [
 ++        "//absl/base",
 ++        "//absl/base:config",
@@ -366,15 +365,77 @@ new file mode 100644
 ++    name = "if_constexpr",
 + )
 +diff --git a/third_party/xla/third_party/absl/system.absl.hash.BUILD b/third_party/xla/third_party/absl/system.absl.hash.BUILD
-+index 3367340cb25..43c6da0c665 100644
++index 3367340cb25..b586ce18ba6 100644
 +--- a/third_party/xla/third_party/absl/system.absl.hash.BUILD
 ++++ b/third_party/xla/third_party/absl/system.absl.hash.BUILD
-+@@ -35,3 +35,8 @@ cc_library(
++@@ -7,7 +7,6 @@ cc_library(
++     linkopts = ["-labsl_hash"],
++     deps = [
++         ":city",
++-        ":low_level_hash",
++         "//absl/base:endian",
++         "//absl/container:fixed_array",
 +         "//absl/numeric:int128",
++@@ -26,12 +25,8 @@ cc_library(
 +     ],
 + )
++ 
++-cc_library(
++-    name = "low_level_hash",
++-    linkopts = ["-labsl_low_level_hash"],
++-    visibility = ["//visibility:private"],
++-    deps = [
++-        "//absl/base:endian",
++-        "//absl/numeric:int128",
++-    ],
 ++alias(
 ++    name = "hash_testing",
 ++    actual = ":hash",
 ++    visibility = ["//visibility:public"],
-++)
++ )
++diff --git a/third_party/xla/third_party/absl/system.absl.types.BUILD b/third_party/xla/third_party/absl/system.absl.types.BUILD
++index db94fc99185..654d028585e 100644
++--- a/third_party/xla/third_party/absl/system.absl.types.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.types.BUILD
++@@ -24,25 +24,12 @@ cc_library(
++ cc_library(
++     name = "optional",
++     deps = [
++-        ":bad_optional_access",
++-    ],
++-)
++-
++-cc_library(
++-    name = "bad_optional_access",
++-    linkopts = ["-labsl_bad_optional_access"],
++-    deps = [
++-        "//absl/base:raw_logging_internal",
+++        "//absl/base:throw_delegate",
++     ],
++ )
++ 
++-cc_library(
++-    name = "bad_variant_access",
++-    linkopts = ["-labsl_bad_variant_access"],
++-    deps = [
++-        "//absl/base:raw_logging_internal",
++-    ],
++-)
+++cc_library(name = "bad_optional_access")
+++cc_library(name = "bad_variant_access")
++ 
++ cc_library(
++     name = "variant",
++diff --git a/third_party/xla/third_party/absl/system.absl.random.BUILD b/third_party/xla/third_party/absl/system.absl.random.BUILD
++index ac17ce6343b..3b04e9325a1 100644
++--- a/third_party/xla/third_party/absl/system.absl.random.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.random.BUILD
++@@ -30,7 +30,7 @@ cc_library(
++     name = "seed_sequences",
++     linkopts = [
++         "-labsl_random_internal_platform",
++-        "-labsl_random_internal_pool_urbg",
+++        "-labsl_random_internal_entropy_pool",
++         "-labsl_random_internal_randen",
++         "-labsl_random_internal_randen_hwaes",
++         "-labsl_random_internal_randen_hwaes_impl",
