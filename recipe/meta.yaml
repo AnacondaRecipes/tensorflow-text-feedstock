@@ -24,7 +24,7 @@ source:
     - patches/0008-Exclude-vendored-abseil-from-tf-headers.patch
     - patches/0009-Create-protobuf-systemlib-patch.patch
     - patches/0010-add-pythonpath-to-sys.path.patch
-    - patches/0011-disable-pywrap-rules.patch
+    - patches/0011-exclude-tflite-framework-static-link.patch
 
 build:
   number: 0

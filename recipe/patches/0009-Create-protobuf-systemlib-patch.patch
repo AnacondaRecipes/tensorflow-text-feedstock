@@ -17,7 +17,7 @@ diff --git a/third_party/tensorflow/protobuf_systemlib.patch b/third_party/tenso
 new file mode 100644
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,545 @@
+@@ -0,0 +1,565 @@
 +diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
 +index 9e49ab40b25..edb27ac7c12 100644
 +--- a/tensorflow/workspace2.bzl
@@ -457,8 +457,34 @@ new file mode 100644
 ++    },
 ++    provides = [PyInfo],
 ++)
++diff --git a/tensorflow/compiler/mlir/lite/core/BUILD b/tensorflow/compiler/mlir/lite/core/BUILD
++index daf69cf2c87..1aadebb27d4 100644
++--- a/tensorflow/compiler/mlir/lite/core/BUILD
+++++ b/tensorflow/compiler/mlir/lite/core/BUILD
++@@ -36,7 +36,7 @@ cc_library(
++         "@com_google_absl//absl/strings",
++         "@flatbuffers",
++     ],
++-    alwayslink = 1,
+++    alwayslink = 0,
++ )
++ 
++ cc_library(
++diff --git a/tensorflow/lite/core/BUILD b/tensorflow/lite/core/BUILD
++index e1c669fb757..975e90624db 100644
++--- a/tensorflow/lite/core/BUILD
+++++ b/tensorflow/lite/core/BUILD
++@@ -309,7 +309,7 @@ cc_library(
++         "//tensorflow/lite:stderr_reporter",
++         "//tensorflow/lite/core/api:error_reporter",
++     ],
++-    alwayslink = 1,
+++    alwayslink = 0,
++ )
++ 
++ cc_library(
 +diff --git a/third_party/systemlibs/protobuf.BUILD b/third_party/systemlibs/protobuf.BUILD
-+index c7d940605f9..e2891b232cc 100644
++index c7d940605f9..c69cf7feef0 100644
 +--- a/third_party/systemlibs/protobuf.BUILD
 ++++ b/third_party/systemlibs/protobuf.BUILD
 +@@ -1,11 +1,11 @@
@@ -477,7 +503,7 @@ new file mode 100644
 + licenses(["notice"])
 + 
 + filegroup(
-+@@ -59,9 +59,47 @@ genrule(
++@@ -59,9 +59,42 @@ genrule(
 +     """,
 + )
 + 
@@ -507,13 +533,7 @@ new file mode 100644
 ++
 + cc_library(
 +     name = "protobuf",
-+-    linkopts = ["-lprotobuf"],
-++    # WORKAROUND: tensorflow (conda main) statically links protobuf, causing
-++    # duplicate proto registration at runtime if we also link -lprotobuf here.
-++    # Protobuf symbols are resolved via -Wl,-flat_namespace from tensorflow's
-++    # already-loaded copy.
-++    # TODO: Remove empty linkopts once tensorflow is rebuilt with system protobuf.
-++    linkopts = [],
++     linkopts = ["-lprotobuf"],
 ++    hdrs = [":link_pb_h_files"],
 ++    includes = ["."],
 ++    visibility = ["//visibility:public"],
@@ -526,7 +546,7 @@ new file mode 100644
 +     visibility = ["//visibility:public"],
 + )
 + 
-+@@ -85,7 +123,7 @@ genrule(
++@@ -85,7 +118,7 @@ genrule(
 +     visibility = ["//visibility:public"],
 + )
 + 
@@ -535,7 +555,7 @@ new file mode 100644
 +     name = "cc_wkt_protos",
 +     internal_bootstrap_hack = 1,
 +     protoc = ":protoc",
-+@@ -105,6 +143,27 @@ py_library(
++@@ -105,6 +138,27 @@ py_library(
 +     visibility = ["//visibility:public"],
 + )
 + 

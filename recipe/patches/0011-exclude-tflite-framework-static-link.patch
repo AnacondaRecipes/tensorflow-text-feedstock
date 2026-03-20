@@ -1,0 +1,83 @@
+diff --git a/tensorflow_text/__init__.py b/tensorflow_text/__init__.py
+index 940fdd7..eb03dc4 100644
+--- a/tensorflow_text/__init__.py
++++ b/tensorflow_text/__init__.py
+@@ -17,7 +17,18 @@
+ from tensorflow.python.util.all_util import remove_undocumented
+ 
+ # pylint: disable=wildcard-import
+-from tensorflow_text.core.pybinds import tflite_registrar
++try:
++  from tensorflow_text.core.pybinds import tflite_registrar
++  _tflite_registrar_available = True
++except ImportError:
++  # tflite_registrar is not available in this build.
++  # TFLite support was intentionally omitted to avoid protobuf descriptor
++  # conflicts with the conda tensorflow package. This conda package is intended
++  # for server-side inference only. If you need TFLite deployment support,
++  # use the official tensorflow-text pip wheel instead.
++  tflite_registrar = None
++  _tflite_registrar_available = False
++
+ from tensorflow_text.python import keras
+ from tensorflow_text.python import metrics
+ from tensorflow_text.python.ops import *
+@@ -85,29 +96,30 @@ _allowed_symbols = [
+     "sliding_window",
+     "span_alignment",
+     "span_overlaps",
+-    "tflite_registrar",
++    *(["tflite_registrar"] if _tflite_registrar_available else []),
+     "utf8_binarize",
+     "viterbi_constrained_sequence",
+     "wordshape",
+ ]
+ 
+ # Update guide/text_tf_lite.ipynb when adding op here
+-tflite_registrar.SELECT_TFTEXT_OPS = [
+-    tflite_registrar.AddByteSplit,
+-    tflite_registrar.AddByteSplitByOffsets,
+-    tflite_registrar.AddFastBertNormalize,
+-    tflite_registrar.AddFastSentencepieceDetokenize,
+-    tflite_registrar.AddFastSentencepieceTokenize,
+-    tflite_registrar.AddFastWordpieceTokenize,
+-    tflite_registrar.AddFastWordpieceDetokenize,
+-    tflite_registrar.AddNgramsStringJoin,
+-    tflite_registrar.AddRaggedTensorToTensor,
+-    tflite_registrar.AddRoundRobinGenerateMasks,
+-    tflite_registrar.AddRoundRobinTrim,
+-    tflite_registrar.AddSentenceFragmenterV2,
+-    tflite_registrar.AddUtf8Binarize,
+-    tflite_registrar.AddWhitespaceTokenize,
+-]
++if _tflite_registrar_available:
++  tflite_registrar.SELECT_TFTEXT_OPS = [
++      tflite_registrar.AddByteSplit,
++      tflite_registrar.AddByteSplitByOffsets,
++      tflite_registrar.AddFastBertNormalize,
++      tflite_registrar.AddFastSentencepieceDetokenize,
++      tflite_registrar.AddFastSentencepieceTokenize,
++      tflite_registrar.AddFastWordpieceTokenize,
++      tflite_registrar.AddFastWordpieceDetokenize,
++      tflite_registrar.AddNgramsStringJoin,
++      tflite_registrar.AddRaggedTensorToTensor,
++      tflite_registrar.AddRoundRobinGenerateMasks,
++      tflite_registrar.AddRoundRobinTrim,
++      tflite_registrar.AddSentenceFragmenterV2,
++      tflite_registrar.AddUtf8Binarize,
++      tflite_registrar.AddWhitespaceTokenize,
++  ]
+ 
+ remove_undocumented(__name__, _allowed_symbols)
+ __version__ = "2.20.1"
+diff --git a/tensorflow_text/core/pybinds/BUILD b/tensorflow_text/core/pybinds/BUILD
+index 550b732..83993d0 100644
+--- a/tensorflow_text/core/pybinds/BUILD
++++ b/tensorflow_text/core/pybinds/BUILD
+@@ -139,7 +139,6 @@ pywrap_library(
+         ":pywrap_model_converter",
+         ":pywrap_phrase_tokenizer_model_builder",
+         ":pywrap_whitespace_tokenizer_config_builder",
+-        ":tflite_registrar",
+     ],
+ )

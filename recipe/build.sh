@@ -1,14 +1,6 @@
 #!/bin/bash
 set -ex
 
-# cp $RECIPE_DIR/patches/protobuf.patch third_party/tensorflow/protobuf.patch
-# mkdir -p stub_includes/google/protobuf
-# cp third_party/tensorflow/abseil_if_constexpr.h stub_includes/absl/utility/internal/if_constexpr.h
-# cp -R $RECIPE_DIR/protobuf_stub/arena.h stub_includes/google/protobuf/arena.h
-# STUB_DIR=stub_includes
-# echo "build --copt=-isystem${STUB_DIR}" >> .bazelrc.user
-# echo "build --host_copt=-isystem${STUB_DIR}" >> .bazelrc.user
-
 source gen-bazel-toolchain
 
 export PATH=$PREFIX/bin:$PATH
@@ -67,14 +59,10 @@ build:apple-toolchain --apple_crosstool_top=//bazel_toolchain:toolchain
 build:apple-toolchain --crosstool_top=//bazel_toolchain:toolchain
 build:apple-toolchain --host_crosstool_top=//bazel_toolchain:toolchain
 
-# macOS: Use flat namespace for runtime symbol resolution
-build --linkopt=-Wl,-flat_namespace
-build --linkopt=-Wl,-undefined,dynamic_lookup
 EOF
 fi
 
 TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
-
 # Create BUILD file for system tensorflow
 cat > "${TF_PATH}/BUILD.bazel" << 'EOF'
 cc_library(
@@ -83,14 +71,13 @@ cc_library(
     strip_include_prefix = "include/",
     visibility = ["//visibility:public"],
 )
-cc_library(
+cc_import(
     name = "libtensorflow_framework",
-    srcs = select({
-        "@bazel_tools//src/conditions:darwin": ["libtensorflow_framework.2.dylib"],
-        "//conditions:default": ["libtensorflow_framework.so.2"],
+    shared_library = select({
+        "@bazel_tools//src/conditions:darwin": "libtensorflow_framework.2.dylib",
+        "//conditions:default": "libtensorflow_framework.so.2",
     }),
     visibility = ["//visibility:public"],
-    # Required by release_or_nightly repository rule
 )
 py_library(
     name = "pkg",
@@ -100,14 +87,12 @@ EOF
 
 # Also need a WORKSPACE file for Bazel to treat it as a repository root
 touch "${TF_PATH}/WORKSPACE"
-
+TF_LIB_DIR=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
+echo "build --linkopt=-L${TF_LIB_DIR}" >> .bazelrc.user
 echo "build --override_repository=pypi_tensorflow=${TF_PATH}" >> .bazelrc.user
 echo "build --features=-layering_check" >> .bazelrc.user
 echo "build --spawn_strategy=local" >> .bazelrc.user
-echo "build --define=tsl_protobuf_header_only=false" >> .bazelrc.user
 echo "build --experimental_strict_action_env=false" >> .bazelrc.user
-echo "build --verbose_failures" >> .bazelrc.user
-echo "build --repo_env=USE_PYWRAP_RULES=False" >> .bazelrc.user
 PY_SITE=$(${PYTHON} -c "import site; print(site.getsitepackages()[0])")
 sed -i '' "s|CONDA_TF_SITE_PACKAGES|${PY_SITE}|g" \
   oss_scripts/pip_package/tensorflow_build_info.py
