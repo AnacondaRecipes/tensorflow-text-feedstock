@@ -45,13 +45,16 @@ build --host_linkopt=-L${PREFIX}/lib
 build --linkopt=-lz
 build --host_linkopt=-lz
 
-# Suppress warnings for TensorFlow's std::is_signed specializations
-build --copt=-Wno-invalid-specialization
-build --host_copt=-Wno-invalid-specialization
+# Fix memchr not declared in re2 with newer gcc
+echo "build --copt=-include cstring" >> .bazelrc.user
+echo "build --host_copt=-include cstring" >> .bazelrc.user
 EOF
 
 if [[ "${target_platform}" == osx-* ]]; then
   cat >> .bazelrc.user <<EOF
+# macOS: Use flat namespace for runtime symbol resolution
+build --linkopt=-Wl,-flat_namespace
+build --linkopt=-Wl,-undefined,dynamic_lookup
 
 # macOS: redirect apple-toolchain config away from local_config_apple_cc
 # (which is an empty stub when BAZEL_NO_APPLE_CPP_TOOLCHAIN=1 is set)
@@ -59,6 +62,9 @@ build:apple-toolchain --apple_crosstool_top=//bazel_toolchain:toolchain
 build:apple-toolchain --crosstool_top=//bazel_toolchain:toolchain
 build:apple-toolchain --host_crosstool_top=//bazel_toolchain:toolchain
 
+# Suppress warnings for TensorFlow's std::is_signed specializations
+build --copt=-Wno-invalid-specialization
+build --host_copt=-Wno-invalid-specialization
 EOF
 fi
 
