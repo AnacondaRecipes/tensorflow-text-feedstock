@@ -46,8 +46,8 @@ build --linkopt=-lz
 build --host_linkopt=-lz
 
 # Fix memchr not declared in re2 with newer gcc
-echo "build --copt=-include cstring" >> .bazelrc.user
-echo "build --host_copt=-include cstring" >> .bazelrc.user
+build --copt=-include cstring
+build --host_copt=-include cstring
 EOF
 
 if [[ "${target_platform}" == osx-* ]]; then
