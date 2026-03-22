@@ -46,8 +46,9 @@ build --linkopt=-lz
 build --host_linkopt=-lz
 
 # Fix memchr not declared in re2 with newer gcc
-build --copt=-include cstring
-build --host_copt=-include cstring
+build --per_file_copt=external/com_googlesource_code_re2/.*@-include,cstring
+build --host_per_file_copt=external/com_googlesource_code_re2/.*@-include,cstring
+
 EOF
 
 if [[ "${target_platform}" == osx-* ]]; then
