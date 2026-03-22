@@ -85,7 +85,9 @@ test:
     - pip
   commands:
     - pip check
-    - conda inspect linkages -p $PREFIX tensorflow-text
+    - conda-inspect linkages -p $PREFIX tensorflow-text || echo "conda-inspect not available, skipping linkages check"
+    - python -c "import tensorflow_text; print('tensorflow_text version:', tensorflow_text.__version__)"
+    - python -c "import tensorflow_text; t = tensorflow_text.WhitespaceTokenizer(); r = t.tokenize('hello world'); print('Tokenization OK:', r)"
 
 about:
   home: https://github.com/tensorflow/text

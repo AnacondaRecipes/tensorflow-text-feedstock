@@ -94,8 +94,9 @@ echo "build --features=-layering_check" >> .bazelrc.user
 echo "build --spawn_strategy=local" >> .bazelrc.user
 echo "build --experimental_strict_action_env=false" >> .bazelrc.user
 PY_SITE=$(${PYTHON} -c "import site; print(site.getsitepackages()[0])")
-sed -i '' "s|CONDA_TF_SITE_PACKAGES|${PY_SITE}|g" \
+sed -i.bak "s|CONDA_TF_SITE_PACKAGES|${PY_SITE}|g" \
   oss_scripts/pip_package/tensorflow_build_info.py
+rm -f oss_scripts/pip_package/tensorflow_build_info.py.bak
 
 ./oss_scripts/run_build.sh
 
