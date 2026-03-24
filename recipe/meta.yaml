@@ -1,13 +1,14 @@
 {% set name = "tensorflow-text" %}
-{% set version = "2.19.0" %}
+{% set version = "2.20.1" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
+  # path: ../../tensorflow-text
   url: https://github.com/{{ name.split('-')[0] }}/{{ name.split('-')[1] }}/archive/v{{ version }}.tar.gz
-  sha256: c06c97ebe5b15250a12bddbab094b13f048a20ff0b8a4967bb03c5f4d57fe3f8
+  sha256: f04cd737b64ac7bdbba46ac649f5de7c30e4e4ccd78c41ead8999758bf6f3685
   patches:
     - patches/0001-Bazel-parallel-build-removed-added-server-cleanup-af.patch
     - patches/0002-Remove-setuptools-hard-pin.patch
@@ -21,6 +22,9 @@ source:
     - patches/0007-Apply-patches-to-TensorFlow-archive.patch
     # Exclude vendored abseil headers from pypi_tensorflow to use system abseil
     - patches/0008-Exclude-vendored-abseil-from-tf-headers.patch
+    - patches/0009-Create-protobuf-systemlib-patch.patch
+    - patches/0010-add-pythonpath-to-sys.path.patch
+    - patches/0011-exclude-tflite_registrar-module.patch
 
 build:
   number: 0
@@ -40,8 +44,8 @@ build:
     - libabseil                            # [osx]
     - libcxx                               # [osx]
     - zlib                                 # [osx]
-  # Latest version of supported python 3.12, look requirements_lock files
-  skip: true  # [py>312]
+  # Latest version of supported python 3.13, look requirements_lock files
+  skip: true  # [py>313]
   # TODO: add support for windows
   skip: true  # [win]
 
@@ -50,8 +54,9 @@ requirements:
     - {{ stdlib('c') }}
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
-    - bazel <7
-    - bazel-toolchain >=0.4.1  # [not win]
+    - bazel <8
+    - bazel-toolchain >=0.4.1,<0.5.0  # [not win]
+    - re2
     - git
   host:
     - pip
@@ -59,18 +64,19 @@ requirements:
     - setuptools >=70.0.0,<76
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow ==2.19.1
+    - tensorflow ==2.20.0
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
-    - libabseil 20250127.*
+    - libabseil {{ libabseil }}
+    - libprotobuf {{ libprotobuf }}
   run:
     - python
-    - tensorflow >=2.19.0,<2.20    
+    - tensorflow >=2.20.0,<2.21    
     - _tflow_select * {{ tensorflow_flavor }}
-    - libabseil 20250127.*
+    - libabseil {{ libabseil }}
     - libzlib  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0
-    - tensorflow-cpu >=2.19.0, <2.20
+    - tensorflow-cpu >=2.20.0,<2.21
     - tensorflow-hub >=0.16.1
 
 test:
@@ -80,7 +86,8 @@ test:
     - pip
   commands:
     - pip check
-    - conda inspect linkages -p $PREFIX tensorflow-text
+    - python -c "import tensorflow_text; print('tensorflow_text version:', tensorflow_text.__version__)"
+    - python -c "import tensorflow_text; t = tensorflow_text.WhitespaceTokenizer(); r = t.tokenize('hello world'); print('Tokenization OK:', r)"
 
 about:
   home: https://github.com/tensorflow/text
