@@ -44,8 +44,8 @@ build:
     - libabseil                            # [osx]
     - libcxx                               # [osx]
     - zlib                                 # [osx]
-  # Latest version of supported python 3.12, look requirements_lock files
-  skip: true  # [py>312]
+  # Latest version of supported python 3.13, look requirements_lock files
+  skip: true  # [py>313]
   # TODO: add support for windows
   skip: true  # [win]
 
