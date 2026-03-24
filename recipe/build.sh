@@ -6,6 +6,7 @@ source gen-bazel-toolchain
 export PATH=$PREFIX/bin:$PATH
 
 # Tell Bazel to use conda-provided system abseil (critical for ABI compatibility)
+TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
 export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf"
 export SYSTEM_LIBS_PREFIX="${PREFIX}"
 
@@ -32,6 +33,9 @@ build --repo_env=GRPC_BAZEL_DIR=${PREFIX}/share/bazel/grpc/bazel
 build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
 build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
 build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
+
+# Use system tensorflow
+build --override_repository=pypi_tensorflow=${TF_PATH}
 
 # Tell compiler/linker to find abseil in conda's paths
 build --action_env=CPLUS_INCLUDE_PATH=${PREFIX}/include
@@ -69,37 +73,8 @@ build --host_copt=-Wno-invalid-specialization
 EOF
 fi
 
-TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
-# Create BUILD file for system tensorflow
-cat > "${TF_PATH}/BUILD.bazel" << 'EOF'
-cc_library(
-    name = "tf_header_lib",
-    hdrs = glob(["include/**/*"]),
-    strip_include_prefix = "include/",
-    visibility = ["//visibility:public"],
-)
-cc_import(
-    name = "libtensorflow_framework",
-    shared_library = select({
-        "@bazel_tools//src/conditions:darwin": "libtensorflow_framework.2.dylib",
-        "//conditions:default": "libtensorflow_framework.so.2",
-    }),
-    visibility = ["//visibility:public"],
-)
-py_library(
-    name = "pkg",
-    visibility = ["//visibility:public"],
-)
-EOF
+bash ${RECIPE_DIR}/gen-tf-bazel-repo.sh "${TF_PATH}"
 
-# Also need a WORKSPACE file for Bazel to treat it as a repository root
-touch "${TF_PATH}/WORKSPACE"
-TF_LIB_DIR=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
-echo "build --linkopt=-L${TF_LIB_DIR}" >> .bazelrc.user
-echo "build --override_repository=pypi_tensorflow=${TF_PATH}" >> .bazelrc.user
-echo "build --features=-layering_check" >> .bazelrc.user
-echo "build --spawn_strategy=local" >> .bazelrc.user
-echo "build --experimental_strict_action_env=false" >> .bazelrc.user
 PY_SITE=$(${PYTHON} -c "import site; print(site.getsitepackages()[0])")
 sed -i.bak "s|CONDA_TF_SITE_PACKAGES|${PY_SITE}|g" \
   oss_scripts/pip_package/tensorflow_build_info.py
