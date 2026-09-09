@@ -1,5 +1,5 @@
 {% set name = "tensorflow-text" %}
-{% set version = "2.20.1" %}
+{% set version = "2.21.0" %}
 
 package:
   name: {{ name }}
@@ -8,7 +8,7 @@ package:
 source:
   # path: ../../tensorflow-text
   url: https://github.com/{{ name.split('-')[0] }}/{{ name.split('-')[1] }}/archive/v{{ version }}.tar.gz
-  sha256: f04cd737b64ac7bdbba46ac649f5de7c30e4e4ccd78c41ead8999758bf6f3685
+  sha256: 2384b83552648c32ecb7590490cea4e9411cab454f1c360e0bdc849176e4e838
   patches:
     - patches/0001-Bazel-parallel-build-removed-added-server-cleanup-af.patch
     - patches/0002-Remove-setuptools-hard-pin.patch
@@ -64,19 +64,19 @@ requirements:
     - setuptools >=70.0.0,<76
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow ==2.20.0
+    - tensorflow ==2.21.0
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
-    - libabseil {{ libabseil }}
-    - libprotobuf {{ libprotobuf }}
+    - libabseil 20260526.0
+    - libprotobuf 7.35.1
   run:
     - python
-    - tensorflow >=2.20.0,<2.21    
+    - tensorflow >=2.21.0,<2.22
     - _tflow_select * {{ tensorflow_flavor }}
-    - libabseil {{ libabseil }}
+    - libabseil 20260526.0
     - libzlib  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0
-    - tensorflow-cpu >=2.20.0,<2.21
+    - tensorflow-cpu >=2.21.0,<2.22
     - tensorflow-hub >=0.16.1
 
 test:
