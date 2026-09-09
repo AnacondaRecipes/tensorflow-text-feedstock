@@ -66,13 +66,13 @@ requirements:
     # The version of tensorflow has to match the version of tensorflow-text
     - tensorflow ==2.21.0
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
-    - libabseil 20260526.0
-    - libprotobuf 7.35.1
+    - libabseil {{ libabseil }}
+    - libprotobuf {{ libprotobuf }}
   run:
     - python
     - tensorflow >=2.21.0,<2.22
     - _tflow_select * {{ tensorflow_flavor }}
-    - libabseil 20260526.0
+    - libabseil {{ libabseil }}
     - libzlib  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0
