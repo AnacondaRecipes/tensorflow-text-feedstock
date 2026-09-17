@@ -28,6 +28,7 @@ build --define=PREFIX=${PREFIX}
 build --define=PROTOBUF_INCLUDE_PATH=${PREFIX}/include
 build --define=with_cross_compiler_support=true
 build --repo_env=GRPC_BAZEL_DIR=${PREFIX}/share/bazel/grpc/bazel
+build --repo_env=PROTOBUF_BAZEL_DIR=${PREFIX}/share/bazel/protobuf/bazel
 
 # Use system abseil and protobuf instead of vendored version (critical for ABI compatibility)
 build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf

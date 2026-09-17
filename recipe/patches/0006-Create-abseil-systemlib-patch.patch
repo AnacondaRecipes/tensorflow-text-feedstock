@@ -4,68 +4,55 @@ Date: Thu, 22 Jan 2026 11:13:42 -0700
 Subject: [PATCH] Create abseil systemlib patch for TensorFlow
 
 Creates abseil_systemlib.patch that gets applied to the TensorFlow source
-during Bazel build. This patch:
-- Updates system.absl.*.BUILD files to link against conda's libabseil
-- Adds missing str_cat.h include to TF's status_macros.h
-- Fixes linkopts for abseil libraries
-
-Consolidated patches from tensorflow-feedstock. 
+during Bazel build, wiring the XLA absl targets to conda's system abseil.
+Regenerated against TensorFlow 2.21.0 (the previous 2.20-era content no
+longer applied).
 ---
+ third_party/tensorflow/BUILD                  |   3 +
+ third_party/tensorflow/abseil_systemlib.patch | 421 ++++++++++++++++++++++++++
+ 2 files changed, 424 insertions(+)
+
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
+index 2b0003e..5c63f95 100644
 --- a/third_party/tensorflow/BUILD
 +++ b/third_party/tensorflow/BUILD
-@@ -1,4 +1,4 @@
+@@ -1 +1,4 @@
  # Needed for Bazel to treat this directory as a package
- 
- # Export patch files for use by http_archive rules
--exports_files(["tflite_tensor_view_fix.patch"])
-+exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch"])
++
++# Export patch files for use by http_archive rules
++exports_files(["abseil_systemlib.patch"])
 diff --git a/third_party/tensorflow/abseil_systemlib.patch b/third_party/tensorflow/abseil_systemlib.patch
 new file mode 100644
+index 0000000..887866c
 --- /dev/null
 +++ b/third_party/tensorflow/abseil_systemlib.patch
-@@ -0,0 +1,414 @@
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.base.BUILD b/third_party/xla/third_party/absl/system.absl.base.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.base.BUILD	2025-03-05 15:02:00
-++++ b/third_party/xla/third_party/absl/system.absl.base.BUILD	2026-01-21 15:07:56
-+@@ -17,12 +17,31 @@
+@@ -0,0 +1,421 @@
++diff --git a/third_party/xla/third_party/absl/system.absl.base.BUILD b/third_party/xla/third_party/absl/system.absl.base.BUILD
++index d6bf8748..f88bef77 100644
++--- a/third_party/xla/third_party/absl/system.absl.base.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.base.BUILD
++@@ -13,6 +13,7 @@ package(default_visibility = ["//visibility:public"])
++     "errno_saver",
++     "fast_type_id",
++     "pretty_function",
+++    "no_destructor",
++ ]]
 + 
 + cc_library(
-+     name = "log_severity",
-+-    linkopts = ["-labsl_log_severity"],
-++    linkopts = [
-++        "-labsl_log_severity",
-++        "-labsl_log_internal_check_op",
-++        "-labsl_log_internal_message",
-++        "-labsl_log_internal_nullguard",
-++    ],
++@@ -64,6 +65,23 @@ cc_library(
++     ],
 + )
 + 
-+ cc_library(
+++cc_library(
 ++    name = "nullability",
-++    deps = [
-++        ":core_headers",
-++        "//absl/meta:type_traits",
+++    defines = [
+++        "absl_nonnull=",
+++        "absl_nullable=", 
+++        "absl_nullability_unknown=",
 ++    ],
 ++)
 ++
-++
 ++cc_library(
-+     name = "raw_logging_internal",
-+-    linkopts = ["-labsl_raw_logging_internal"],
-++    linkopts = [
-++        "-labsl_raw_logging_internal",
-++        "-labsl_log_internal_check_op",
-++        "-labsl_log_internal_message",
-++        "-labsl_log_internal_nullguard",
-++    ],
-+     visibility = [
-+         "//absl:__subpackages__",
-+     ],
-+@@ -99,9 +118,27 @@
-+ )
-+ 
-+ cc_library(
 ++    name = "prefetch",
 ++    deps = [
 ++        ":config",
@@ -73,183 +60,238 @@ new file mode 100644
 ++    ],
 ++)
 ++
-++cc_library(
-+     name = "strerror",
-+     linkopts = ["-labsl_strerror"],
-+     visibility = [
++ cc_library(
++     name = "throw_delegate",
++     linkopts = ["-labsl_throw_delegate"],
++@@ -105,3 +123,12 @@ cc_library(
 +         "//absl:__subpackages__",
 +     ],
 + )
 ++
 ++cc_library(
 ++    name = "tracing_internal",
-++    linkopts = ["-labsl_tracing_internal"],
+++    linkopts = ["-labsl_base", "-labsl_tracing_internal"],
 ++    deps = [
 ++        ":config",
 ++        ":core_headers",
 ++    ],
 ++)
-++
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.crc.BUILD b/third_party/xla/third_party/absl/system.absl.crc.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.crc.BUILD	1969-12-31 17:00:00
-++++ b/third_party/xla/third_party/absl/system.absl.crc.BUILD	2026-01-21 15:07:56
-+@@ -0,0 +1,70 @@
-++load("@rules_cc//cc:defs.bzl", "cc_library")
-++
-++package(default_visibility = ["//visibility:public"])
-++
-++cc_library(
-++    name = "crc32c",
-++    linkopts = [
-++        "-labsl_crc32c",
-++        "-labsl_crc_cord_state",
-++        "-labsl_crc_cpu_detect",
-++        "-labsl_crc_internal",
-++    ],
-++    deps = [
-++        ":cpu_detect",
-++        ":crc_internal",
-++        ":non_temporal_memcpy",
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++        "//absl/base:endian",
-++        "//absl/base:prefetch",
-++        "//absl/strings",
-++        "//absl/strings:str_format",
-++    ],
-++)
++diff --git a/third_party/xla/third_party/absl/system.absl.container.BUILD b/third_party/xla/third_party/absl/system.absl.container.BUILD
++index 95c16260..ba5962be 100644
++--- a/third_party/xla/third_party/absl/system.absl.container.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.container.BUILD
++@@ -215,3 +215,11 @@ cc_library(
++         "//absl/utility",
++     ],
++ )
 ++
 ++cc_library(
-++    name = "cpu_detect",
-++    visibility = ["//visibility:private"],
+++    name = "hash_container_defaults",
 ++    deps = [
-++        "//absl/base",
+++        ":hash_function_defaults",
 ++        "//absl/base:config",
 ++    ],
 ++)
-++
-++cc_library(
-++    name = "crc_internal",
-++    visibility = ["//visibility:private"],
-++    deps = [
-++        ":cpu_detect",
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++        "//absl/base:endian",
-++        "//absl/base:prefetch",
-++        "//absl/base:raw_logging_internal",
-++        "//absl/memory",
-++        "//absl/numeric:bits",
-++    ],
-++)
-++
-++cc_library(
-++    name = "non_temporal_memcpy",
-++    visibility = [
-++        ":__pkg__",
-++    ],
-++    deps = [
-++        ":non_temporal_arm_intrinsics",
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++    ],
-++)
-++
-++cc_library(
-++    name = "non_temporal_arm_intrinsics",
-++    visibility = [
-++        ":__pkg__",
-++    ],
-++    deps = [
-++        "//absl/base:config",
-++    ],
-++)
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.flags.BUILD b/third_party/xla/third_party/absl/system.absl.flags.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.flags.BUILD	2025-03-05 15:02:00
-++++ b/third_party/xla/third_party/absl/system.absl.flags.BUILD	2026-01-21 15:07:56
-+@@ -97,7 +97,7 @@
++diff --git a/third_party/xla/third_party/absl/system.absl.debugging.BUILD b/third_party/xla/third_party/absl/system.absl.debugging.BUILD
++index 931ffdc9..3fc97a45 100644
++--- a/third_party/xla/third_party/absl/system.absl.debugging.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.debugging.BUILD
++@@ -4,7 +4,7 @@ package(default_visibility = ["//visibility:public"])
++ 
++ cc_library(
++     name = "stacktrace",
++-    linkopts = ["-labsl_stacktrace"],
+++    linkopts = ["-labsl_stacktrace", "-labsl_examine_stack"],
++     deps = [
++         ":debugging_internal",
++     ],
++@@ -41,7 +41,7 @@ cc_library(
++ 
++ cc_library(
++     name = "debugging_internal",
++-    linkopts = ["-labsl_debugging_internal"],
+++    linkopts = ["-labsl_stacktrace"],
++     deps = [
++         "//absl/base:dynamic_annotations",
++         "//absl/base:errno_saver",
++@@ -51,7 +51,7 @@ cc_library(
++ 
++ cc_library(
++     name = "demangle_internal",
++-    linkopts = ["-labsl_demangle_internal"],
+++    linkopts = ["-labsl_symbolize"],
++     deps = [
++         "//absl/base",
++     ],
++diff --git a/third_party/xla/third_party/absl/system.absl.flags.BUILD b/third_party/xla/third_party/absl/system.absl.flags.BUILD
++index aff653c7..2378fe2b 100644
++--- a/third_party/xla/third_party/absl/system.absl.flags.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.flags.BUILD
++@@ -5,9 +5,7 @@ package(default_visibility = ["//visibility:public"])
++ cc_library(
++     name = "program_name",
++     linkopts = ["-labsl_flags_program_name"],
++-    visibility = [
++-        "//absl/flags:__pkg__",
++-    ],
+++    visibility = ["//visibility:public"],
++     deps = [
++         "//absl/strings",
++         "//absl/synchronization",
++@@ -36,7 +34,7 @@ cc_library(
++ 
++ cc_library(
++     name = "commandlineflag_internal",
++-    linkopts = ["-labsl_flags_commandlineflag_internal"],
+++    linkopts = ["-labsl_flags_commandlineflag", "-labsl_flags_commandlineflag_internal"],
++ )
++ 
++ cc_library(
++@@ -52,9 +50,7 @@ cc_library(
++ cc_library(
++     name = "private_handle_accessor",
++     linkopts = ["-labsl_flags_private_handle_accessor"],
++-    visibility = [
++-        "//absl/flags:__pkg__",
++-    ],
+++    visibility = ["//visibility:public"],
++     deps = [
++         ":commandlineflag",
++         ":commandlineflag_internal",
++@@ -79,7 +75,7 @@ cc_library(
++ cc_library(
++     name = "flag_internal",
++     linkopts = ["-labsl_flags_internal"],
++-    visibility = ["//absl/base:__subpackages__"],
+++    visibility = ["//visibility:public"],
++     deps = [
++         ":commandlineflag",
++         ":commandlineflag_internal",
++@@ -97,11 +93,24 @@ cc_library(
 + 
 + cc_library(
 +     name = "flag",
 +-    linkopts = ["-labsl_flags"],
-++    linkopts = ["-labsl_log_flags"],
+++    linkopts = [
+++        "-labsl_flags_internal",
+++        "-labsl_flags_commandlineflag",
+++        "-labsl_flags_config",
+++        "-labsl_flags_marshalling",
+++        "-labsl_flags_reflection",
+++        "-labsl_flags_private_handle_accessor",
+++        "-labsl_flags_program_name",
+++    ],
 +     deps = [
 +         ":config",
 +         ":flag_internal",
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.log.BUILD b/third_party/xla/third_party/absl/system.absl.log.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.log.BUILD	1969-12-31 17:00:00
-++++ b/third_party/xla/third_party/absl/system.absl.log.BUILD	2026-01-21 15:07:56
-+@@ -0,0 +1,63 @@
-++load("@rules_cc//cc:defs.bzl", "cc_library")
-++
-++package(default_visibility = ["//visibility:public"])
-++
-++cc_library(
-++    name = "absl_log",
-++    linkopts = [
-++        "-labsl_vlog_config_internal",
-++        "-labsl_log_internal_conditions",
-++        "-labsl_log_internal_check_op",
-++        "-labsl_log_internal_message",
-++        "-labsl_log_internal_nullguard",
-++    ],
-++)
-++
-++cc_library(
-++    name = "die_if_null",
-++    linkopts = ["-labsl_die_if_null"],
-++    deps = [
-++        ":log",
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++        "//absl/strings",
-++    ],
-++)
-++
-++cc_library(
-++    name = "check",
-++    linkopts = [
-++        "-labsl_vlog_config_internal",
-++        "-labsl_log_internal_check_op",
-++        "-labsl_log_internal_message",
-++        "-labsl_log_internal_nullguard",
-++    ],
-++)
-++
-++alias(
-++    name = "log",
-++    actual = ":absl_log",
-++)
-++
-++alias(
-++    name = "absl_check",
-++    actual = ":check",
-++)
-++cc_library(
-++    name = "initialize",
-++    linkopts = ["-labsl_log_initialize"],
-++    deps = [
-++        ":absl_log",
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++    ],
-++)
-++
-++cc_library(
-++    name = "globals",
-++    linkopts = ["-labsl_log_globals"],
-++    deps = [
-++        "//absl/base:config",
-++        "//absl/base:core_headers",
-++    ],
-++)
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.strings.BUILD b/third_party/xla/third_party/absl/system.absl.strings.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.strings.BUILD	2025-03-05 15:02:00
-++++ b/third_party/xla/third_party/absl/system.absl.strings.BUILD	2026-01-21 15:07:56
-+@@ -25,8 +25,19 @@
-+ )
++         ":reflection",
+++        ":commandlineflag",
+++        ":commandlineflag_internal",
+++        ":marshalling",
+++        ":private_handle_accessor",
+++        ":program_name",
++         "//absl/base",
++         "//absl/strings",
++     ],
++@@ -109,10 +118,8 @@ cc_library(
 + 
 + cc_library(
++     name = "usage_internal",
++-    linkopts = ["-labsl_flags_usage_internal"],
++-    visibility = [
++-        "//absl/flags:__pkg__",
++-    ],
+++    linkopts = ["-labsl_flags_usage"],
+++    visibility = ["//visibility:public"],
++     deps = [
++         ":commandlineflag",
++         ":config",
++diff --git a/third_party/xla/third_party/absl/system.absl.functional.BUILD b/third_party/xla/third_party/absl/system.absl.functional.BUILD
++index 9439bd0b..a12a4466 100644
++--- a/third_party/xla/third_party/absl/system.absl.functional.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.functional.BUILD
++@@ -13,3 +13,8 @@ cc_library(
++ cc_library(
++     name = "function_ref",
++ )
+++
+++cc_library(
+++    name = "overload",
+++    linkopts = ["-labsl_base"],
+++)
++\ No newline at end of file
++diff --git a/third_party/xla/third_party/absl/system.absl.hash.BUILD b/third_party/xla/third_party/absl/system.absl.hash.BUILD
++index 3367340c..316693e1 100644
++--- a/third_party/xla/third_party/absl/system.absl.hash.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.hash.BUILD
++@@ -28,7 +28,7 @@ cc_library(
++ 
++ cc_library(
++     name = "low_level_hash",
++-    linkopts = ["-labsl_low_level_hash"],
+++    linkopts = ["-labsl_hash"],
++     visibility = ["//visibility:private"],
++     deps = [
++         "//absl/base:endian",
++diff --git a/third_party/xla/third_party/absl/system.absl.random.BUILD b/third_party/xla/third_party/absl/system.absl.random.BUILD
++index ac17ce63..f3a4bcfc 100644
++--- a/third_party/xla/third_party/absl/system.absl.random.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.random.BUILD
++@@ -29,14 +29,13 @@ cc_library(
++ cc_library(
++     name = "seed_sequences",
++     linkopts = [
++-        "-labsl_random_internal_platform",
++-        "-labsl_random_internal_pool_urbg",
+++        "-labsl_random_seed_sequences",
+++        "-labsl_random_internal_entropy_pool",
++         "-labsl_random_internal_randen",
++         "-labsl_random_internal_randen_hwaes",
++         "-labsl_random_internal_randen_hwaes_impl",
++         "-labsl_random_internal_randen_slow",
++-        "-labsl_random_internal_seed_material",
++-        "-labsl_random_seed_sequences",
+++        "-labsl_random_internal_platform",
++         "-pthread",
++     ],
++     deps = [
++diff --git a/third_party/xla/third_party/absl/system.absl.status.BUILD b/third_party/xla/third_party/absl/system.absl.status.BUILD
++index e50e9790..3eeb0d8d 100644
++--- a/third_party/xla/third_party/absl/system.absl.status.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.status.BUILD
++@@ -4,7 +4,14 @@ package(default_visibility = ["//visibility:public"])
++ 
++ cc_library(
++     name = "status",
++-    linkopts = ["-labsl_status"],
+++    linkopts = [
+++        "-labsl_status",
+++        "-labsl_cord",
+++        "-labsl_cord_internal",
+++        "-labsl_cordz_functions",
+++        "-labsl_cordz_info",
+++        "-labsl_cordz_handle",
+++    ],
++     deps = [
++         "//absl/base:atomic_hook",
++         "//absl/base:raw_logging_internal",
++diff --git a/third_party/xla/third_party/absl/system.absl.strings.BUILD b/third_party/xla/third_party/absl/system.absl.strings.BUILD
++index fa9a7a84..f7fa5737 100644
++--- a/third_party/xla/third_party/absl/system.absl.strings.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.strings.BUILD
++@@ -17,16 +17,27 @@ cc_library(
++ 
++ cc_library(
++     name = "internal",
++-    linkopts = ["-labsl_strings_internal"],
+++    linkopts = ["-labsl_strings", "-labsl_strings_internal"],
++     deps = [
++         "//absl/base:endian",
++         "//absl/base:raw_logging_internal",
++     ],
++ )
++ 
+++cc_library(
 ++    name = "string_view",
 ++    deps = [
 ++        "//absl/base",
@@ -260,21 +302,33 @@ new file mode 100644
 ++    ],
 ++)
 ++
-++cc_library(
++ cc_library(
 +     name = "cord",
 +-    linkopts = ["-labsl_cord"],
-++    linkopts = ["-labsl_cord", "-labsl_cordz_functions", "-labsl_cordz_info", "-labsl_cord_internal"],
+++    linkopts = ["-labsl_cord", "-labsl_cordz_functions", "-labsl_cordz_info", "-labsl_cordz_handle", "-labsl_cord_internal"],
 +     deps = [
 +         ":str_format",
 +         "//absl/container:compressed_tuple",
-+diff -ruN a/third_party/xla/third_party/absl/system.absl.synchronization.BUILD b/third_party/xla/third_party/absl/system.absl.synchronization.BUILD
-+--- a/third_party/xla/third_party/absl/system.absl.synchronization.BUILD	2025-03-05 15:02:00
-++++ b/third_party/xla/third_party/absl/system.absl.synchronization.BUILD	2026-01-21 15:07:56
-+@@ -17,13 +17,28 @@
++diff --git a/third_party/xla/third_party/absl/system.absl.synchronization.BUILD b/third_party/xla/third_party/absl/system.absl.synchronization.BUILD
++index c0fa37aa..875b5bca 100644
++--- a/third_party/xla/third_party/absl/system.absl.synchronization.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.synchronization.BUILD
++@@ -5,7 +5,7 @@ package(default_visibility = ["//visibility:public"])
++ # Internal data structure for efficiently detecting mutex dependency cycles
++ cc_library(
++     name = "graphcycles_internal",
++-    linkopts = ["-labsl_graphcycles_internal"],
+++    linkopts = ["-labsl_synchronization"],
++     visibility = [
++         "//absl:__subpackages__",
++     ],
++@@ -16,6 +16,20 @@ cc_library(
++     ],
 + )
 + 
-+ cc_library(
+++cc_library(
 ++    name = "kernel_timeout_internal",
+++    linkopts = ["-labsl_kernel_timeout_internal"],
 ++    visibility = [
 ++    ],
 ++    deps = [
@@ -286,12 +340,10 @@ new file mode 100644
 ++    ],
 ++)
 ++
-++cc_library(
++ cc_library(
 +     name = "synchronization",
 +     linkopts = [
-+         "-labsl_synchronization",
-++        "-labsl_kernel_timeout_internal",
-+         "-pthread",
++@@ -24,6 +38,7 @@ cc_library(
 +     ],
 +     deps = [
 +         ":graphcycles_internal",
@@ -299,26 +351,77 @@ new file mode 100644
 +         "//absl/base",
 +         "//absl/base:atomic_hook",
 +         "//absl/base:dynamic_annotations",
++diff --git a/third_party/xla/third_party/absl/system.absl.types.BUILD b/third_party/xla/third_party/absl/system.absl.types.BUILD
++index db94fc99..ebfea47b 100644
++--- a/third_party/xla/third_party/absl/system.absl.types.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.types.BUILD
++@@ -11,7 +11,9 @@ cc_library(
++ 
++ cc_library(
++     name = "bad_any_cast",
++-    linkopts = ["-labsl_bad_any_cast_impl"],
+++    deps = [
+++        "@com_google_absl//absl/base:base",
+++    ],
++ )
++ 
++ cc_library(
++@@ -30,16 +32,16 @@ cc_library(
++ 
++ cc_library(
++     name = "bad_optional_access",
++-    linkopts = ["-labsl_bad_optional_access"],
++     deps = [
+++        "@com_google_absl//absl/base:base",
++         "//absl/base:raw_logging_internal",
++     ],
++ )
++ 
++ cc_library(
++     name = "bad_variant_access",
++-    linkopts = ["-labsl_bad_variant_access"],
++     deps = [
+++        "@com_google_absl//absl/base:base",
++         "//absl/base:raw_logging_internal",
++     ],
++ )
++diff --git a/third_party/xla/third_party/absl/system.absl.utility.BUILD b/third_party/xla/third_party/absl/system.absl.utility.BUILD
++index e15049e2..e9c25fe3 100644
++--- a/third_party/xla/third_party/absl/system.absl.utility.BUILD
+++++ b/third_party/xla/third_party/absl/system.absl.utility.BUILD
++@@ -1,6 +1,11 @@
++ load("@rules_cc//cc:defs.bzl", "cc_library")
++ 
+++package(default_visibility = ["//visibility:public"])
+++
++ cc_library(
++     name = "utility",
++-    visibility = ["//visibility:public"],
++ )
+++
+++cc_library(
+++    name = "if_constexpr",
+++)
++\ No newline at end of file
 +diff --git a/third_party/xla/third_party/absl/workspace.bzl b/third_party/xla/third_party/absl/workspace.bzl
-+index 9144c5bd5b6..127c7ea07ae 100644
++index 46c1573b..6a6add09 100644
 +--- a/third_party/xla/third_party/absl/workspace.bzl
 ++++ b/third_party/xla/third_party/absl/workspace.bzl
-+@@ -10,15 +10,41 @@ def repo():
-+     ABSL_COMMIT = "d9e4955c65cd4367dd6bf46f4ccb8cd3d100540b"  # LTS 20250127.1
-+     ABSL_SHA256 = "c397cd9cca3f71724a8ddf183e7fa71c19196eaafd1dc2a3c86d3a572613a807"
++@@ -11,9 +11,40 @@ def repo():
++     ABSL_SHA256 = "d1abe9da2003e6cbbd7619b0ced3e52047422f4f4ac6c66a9bef5d2e99fea837"
 +     # LINT.ThenChange(//tensorflow/lite/tools/cmake/modules/abseil-cpp.cmake)
-+-
++ 
 ++    SYS_DIRS = [
 ++        "algorithm",
 ++        "base",
+++        "crc",
+++        "log",
 ++        "cleanup",
 ++        "container",
-++        "crc",
 ++        "debugging",
 ++        "flags",
 ++        "functional",
 ++        "hash",
-++        "log",
 ++        "memory",
 ++        "meta",
 ++        "numeric",
@@ -330,112 +433,18 @@ new file mode 100644
 ++        "types",
 ++        "utility",
 ++    ]
+++
 ++    SYS_LINKS = {
-++        "@org_tensorflow//third_party/xla/third_party/absl:system.absl.{name}.BUILD".format(name = n): "absl/{name}/BUILD.bazel".format(name = n)
+++        "//third_party/absl:system.absl.{name}.BUILD".format(name = n): "absl/{name}/BUILD.bazel".format(name = n)
 ++        for n in SYS_DIRS
 ++    }
+++
 +     tf_http_archive(
 +         name = "com_google_absl",
 +         sha256 = ABSL_SHA256,
-++        build_file = "@org_tensorflow//third_party/xla/third_party/absl:com_google_absl.BUILD",
-++        system_build_file = "@org_tensorflow//third_party/xla/third_party/absl:system.BUILD",
+++        build_file = "//third_party/absl:com_google_absl.BUILD",
+++        system_build_file = "//third_party/absl:system.BUILD",
 ++        system_link_files = SYS_LINKS,
 +         strip_prefix = "abseil-cpp-{commit}".format(commit = ABSL_COMMIT),
 +         urls = tf_mirror_urls("https://github.com/abseil/abseil-cpp/archive/{commit}.tar.gz".format(commit = ABSL_COMMIT)),
 +         patch_file = [
-+-            "//third_party/absl:btree.patch",
-+-            "//third_party/absl:build_dll.patch",
-+             "//third_party/absl:nullability_macros.patch",
-+             "//third_party/absl:rules_cc.patch",
-+         ],
-+diff --git a/third_party/xla/third_party/absl/system.absl.utility.BUILD b/third_party/xla/third_party/absl/system.absl.utility.BUILD
-+index e15049e261c..65396385b8e 100644
-+--- a/third_party/xla/third_party/absl/system.absl.utility.BUILD
-++++ b/third_party/xla/third_party/absl/system.absl.utility.BUILD
-+@@ -1,6 +1,9 @@
-+ load("@rules_cc//cc:defs.bzl", "cc_library")
-+-
-++package(default_visibility = ["//visibility:public"])
-+ cc_library(
-+     name = "utility",
-+-    visibility = ["//visibility:public"],
-++)
-++
-++cc_library(
-++    name = "if_constexpr",
-+ )
-+diff --git a/third_party/xla/third_party/absl/system.absl.hash.BUILD b/third_party/xla/third_party/absl/system.absl.hash.BUILD
-+index 3367340cb25..b586ce18ba6 100644
-+--- a/third_party/xla/third_party/absl/system.absl.hash.BUILD
-++++ b/third_party/xla/third_party/absl/system.absl.hash.BUILD
-+@@ -7,7 +7,6 @@ cc_library(
-+     linkopts = ["-labsl_hash"],
-+     deps = [
-+         ":city",
-+-        ":low_level_hash",
-+         "//absl/base:endian",
-+         "//absl/container:fixed_array",
-+         "//absl/numeric:int128",
-+@@ -26,12 +25,8 @@ cc_library(
-+     ],
-+ )
-+ 
-+-cc_library(
-+-    name = "low_level_hash",
-+-    linkopts = ["-labsl_low_level_hash"],
-+-    visibility = ["//visibility:private"],
-+-    deps = [
-+-        "//absl/base:endian",
-+-        "//absl/numeric:int128",
-+-    ],
-++alias(
-++    name = "hash_testing",
-++    actual = ":hash",
-++    visibility = ["//visibility:public"],
-+ )
-+diff --git a/third_party/xla/third_party/absl/system.absl.types.BUILD b/third_party/xla/third_party/absl/system.absl.types.BUILD
-+index db94fc99185..654d028585e 100644
-+--- a/third_party/xla/third_party/absl/system.absl.types.BUILD
-++++ b/third_party/xla/third_party/absl/system.absl.types.BUILD
-+@@ -24,25 +24,12 @@ cc_library(
-+ cc_library(
-+     name = "optional",
-+     deps = [
-+-        ":bad_optional_access",
-+-    ],
-+-)
-+-
-+-cc_library(
-+-    name = "bad_optional_access",
-+-    linkopts = ["-labsl_bad_optional_access"],
-+-    deps = [
-+-        "//absl/base:raw_logging_internal",
-++        "//absl/base:throw_delegate",
-+     ],
-+ )
-+ 
-+-cc_library(
-+-    name = "bad_variant_access",
-+-    linkopts = ["-labsl_bad_variant_access"],
-+-    deps = [
-+-        "//absl/base:raw_logging_internal",
-+-    ],
-+-)
-++cc_library(name = "bad_optional_access")
-++cc_library(name = "bad_variant_access")
-+ 
-+ cc_library(
-+     name = "variant",
-+diff --git a/third_party/xla/third_party/absl/system.absl.random.BUILD b/third_party/xla/third_party/absl/system.absl.random.BUILD
-+index ac17ce6343b..3b04e9325a1 100644
-+--- a/third_party/xla/third_party/absl/system.absl.random.BUILD
-++++ b/third_party/xla/third_party/absl/system.absl.random.BUILD
-+@@ -30,7 +30,7 @@ cc_library(
-+     name = "seed_sequences",
-+     linkopts = [
-+         "-labsl_random_internal_platform",
-+-        "-labsl_random_internal_pool_urbg",
-++        "-labsl_random_internal_entropy_pool",
-+         "-labsl_random_internal_randen",
-+         "-labsl_random_internal_randen_hwaes",
-+         "-labsl_random_internal_randen_hwaes_impl",

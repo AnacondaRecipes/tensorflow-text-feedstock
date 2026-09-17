@@ -16,7 +16,6 @@ source:
     # Fix missing absl/strings/str_cat.h includes in tensorflow-text source
     - patches/0004-Add-missing-str_cat-includes.patch
     # Create patch files for TensorFlow (applied during Bazel build)
-    - patches/0005-Create-tflite-tensor-view-patch.patch
     - patches/0006-Create-abseil-systemlib-patch.patch
     # Apply the above patches to TensorFlow archive in WORKSPACE
     - patches/0007-Apply-patches-to-TensorFlow-archive.patch
@@ -67,6 +66,7 @@ requirements:
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
     - libabseil {{ libabseil }}
     - libprotobuf {{ libprotobuf }}
+    - protobuf-bazel-rules {{ libprotobuf.split('.', 1)[1] }}
     - libzlib {{ libzlib }}  # [linux]
   run:
     - python
