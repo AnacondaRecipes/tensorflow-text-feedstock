@@ -7,7 +7,7 @@ export PATH=$PREFIX/bin:$PATH
 
 # Tell Bazel to use conda-provided system abseil (critical for ABI compatibility)
 TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
-export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf"
+export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf,com_github_grpc_grpc"
 export SYSTEM_LIBS_PREFIX="${PREFIX}"
 
 if [[ "${target_platform}" == osx-* ]]; then
@@ -31,9 +31,9 @@ build --repo_env=GRPC_BAZEL_DIR=${PREFIX}/share/bazel/grpc/bazel
 build --repo_env=PROTOBUF_BAZEL_DIR=${PREFIX}/share/bazel/protobuf/bazel
 
 # Use system abseil and protobuf instead of vendored version (critical for ABI compatibility)
-build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
-build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
-build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf
+build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
+build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
+build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
 
 # Use system tensorflow
 build --override_repository=pypi_tensorflow=${TF_PATH}

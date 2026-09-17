@@ -66,6 +66,7 @@ requirements:
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
     - libabseil {{ libabseil }}
     - libprotobuf {{ libprotobuf }}
+    - libgrpc {{ libgrpc }}
     - protobuf-bazel-rules {{ libprotobuf.split('.', 1)[1] }}
     - libzlib {{ libzlib }}  # [linux]
   run:
