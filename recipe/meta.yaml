@@ -24,6 +24,8 @@ source:
     - patches/0009-Create-protobuf-systemlib-patch.patch
     - patches/0010-add-pythonpath-to-sys.path.patch
     - patches/0011-exclude-tflite_registrar-module.patch
+    # Use protobuf's proto rules so the toolchain provider matches
+    - patches/0012-use-protobuf-proto-rules.patch
 
 build:
   number: 0

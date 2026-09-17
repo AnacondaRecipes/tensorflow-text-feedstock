@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Anaconda Recipes <recipe-maintainers@anaconda.com>
+Date: Thu, 17 Sep 2026 10:00:00 -0600
+Subject: [PATCH] Use protobuf's proto_library/cc_proto_library in kernels BUILD
+
+The OSS export relies on Bazel's builtin proto rules, whose cc_proto_aspect
+requires the toolchain target to provide the builtin ProtoLangToolchainInfo.
+@com_google_protobuf//:cc_toolchain comes from protobuf-bazel-rules and
+provides protobuf's own provider, so analysis failed with
+"rule 'proto_lang_toolchain' does not contain declared provider
+'ProtoLangToolchainInfo'".
+
+Load protobuf's rules, as upstream does internally, so both sides use the
+same provider.
+---
+ tensorflow_text/core/kernels/BUILD | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/tensorflow_text/core/kernels/BUILD b/tensorflow_text/core/kernels/BUILD
+--- a/tensorflow_text/core/kernels/BUILD
++++ b/tensorflow_text/core/kernels/BUILD
+@@ -4,9 +4,9 @@ load("@flatbuffers//:build_defs.bzl", "flatbuffer_cc_library")
+ load("@rules_cc//cc:cc_library.bzl", "cc_library")
+ load("@rules_cc//cc:cc_test.bzl", "cc_test")
+ 
+-# Placeholder: load proto_library
++load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
+ load("//tensorflow_text:tftext.bzl", "tf_cc_library", "tflite_cc_library")
+-# [internal] load cc_proto_library.bzl
++load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+ 
+ licenses(["notice"])
+ 
