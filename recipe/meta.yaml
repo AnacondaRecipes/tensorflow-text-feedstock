@@ -26,6 +26,8 @@ source:
     - patches/0011-exclude-tflite_registrar-module.patch
     # Use protobuf's proto rules so the toolchain provider matches
     - patches/0012-use-protobuf-proto-rules.patch
+    # protobuf 7 marks ParseFromString [[nodiscard]]
+    - patches/0013-silence-protobuf7-nodiscard.patch
 
 build:
   number: 0
