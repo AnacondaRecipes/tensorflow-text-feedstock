@@ -6,13 +6,14 @@ Subject: [PATCH] Create protobuf systemlib patch for TensorFlow
 Creates protobuf_systemlib.patch that gets applied to the TensorFlow source
 during Bazel build, replacing the vendored protobuf download with a repo
 built from conda's protobuf-bazel-rules package (jaxlib-style), plus the
-systemlib BUILD/bzl files for protobuf, grpc and python rules, and a
-nodiscard cast in TSL's protobuf_util.cc for protobuf 7.
+systemlib BUILD/bzl files for protobuf, grpc and python rules, and the
+.bazelrc changes (drop -Werror=unused-result on linux for protobuf 7
+nodiscard warnings).
 Regenerated against TensorFlow 2.21.0.
 ---
  third_party/tensorflow/BUILD                    |    2 +-
- third_party/tensorflow/protobuf_systemlib.patch | 1692 +++++++++++++++++++++++
- 2 files changed, 1693 insertions(+), 1 deletion(-)
+ third_party/tensorflow/protobuf_systemlib.patch | 1691 +++++++++++++++++++++++
+ 2 files changed, 1692 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
 index 5c63f95..f2aa6ef 100644
@@ -26,10 +27,31 @@ index 5c63f95..f2aa6ef 100644
 +exports_files(["abseil_systemlib.patch", "protobuf_systemlib.patch"])
 diff --git a/third_party/tensorflow/protobuf_systemlib.patch b/third_party/tensorflow/protobuf_systemlib.patch
 new file mode 100644
-index 0000000..88ded1d
+index 0000000..21eb316
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,1692 @@
+@@ -0,0 +1,1691 @@
++diff --git a/.bazelrc b/.bazelrc
++index 92e73998..f5e23bc9 100644
++--- a/.bazelrc
+++++ b/.bazelrc
++@@ -410,7 +410,7 @@ common:ios --noenable_platform_specific_config
++ common:android --copt=-w
++ common:ios --copt=-w
++ common:linux --host_copt=-w
++-common:macos --copt=-w
+++common:macos --copt=-w --copt=-Wno-c++11-narrowing
++ common:windows --copt=/W0
++ common:windows --host_copt=/W0
++ 
++@@ -425,7 +425,6 @@ common:linux --copt="-Wno-array-bounds"
++ 
++ # Add unused-result as an error on Linux.
++ common:linux --copt="-Wunused-result"
++-common:linux --copt="-Werror=unused-result"
++ # Add switch as an error on Linux.
++ common:linux --copt="-Wswitch"
++ common:linux --copt="-Werror=switch"
 +diff --git a/WORKSPACE b/WORKSPACE
 +index 6e4a63ff..f37b5d54 100644
 +--- a/WORKSPACE
@@ -1636,28 +1658,6 @@ index 0000000..88ded1d
 +     )
 + 
 +     tf_http_archive(
-+diff --git a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
-+index 0bab6131..4e3dfb8c 100644
-+--- a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
-++++ b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
-+@@ -34,7 +34,7 @@ std::string LegacyUnredactedDebugString(const tsl::protobuf::Message& message) {
-+   tsl::protobuf::TextFormat::Printer printer;
-+   printer.SetExpandAny(true);
-+ 
-+-  printer.PrintToString(message, &debug_string);
-++  (void)printer.PrintToString(message, &debug_string);
-+   return debug_string;
-+ }
-+ 
-+@@ -50,7 +50,7 @@ std::string LegacyUnredactedShortDebugString(
-+   printer.SetSingleLineMode(true);
-+   printer.SetExpandAny(true);
-+ 
-+-  printer.PrintToString(message, &debug_string);
-++  (void)printer.PrintToString(message, &debug_string);
-+   if (!debug_string.empty() && debug_string.back() == ' ') {
-+     debug_string.pop_back();
-+   }
 +diff --git a/third_party/xla/workspace2.bzl b/third_party/xla/workspace2.bzl
 +index 3f9041ed..67607c0c 100644
 +--- a/third_party/xla/workspace2.bzl
