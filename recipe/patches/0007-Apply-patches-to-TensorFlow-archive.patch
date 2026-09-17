@@ -3,13 +3,15 @@ From: Eric Lundby <Eric.Lundby@gmail.com>
 Date: Thu, 22 Jan 2026 11:12:40 -0700
 Subject: [PATCH] Apply the patches to the TensorFlow repository during Bazel build.
 
-Apply the patches created in 0005 and 0006 to the TensorFlow repository during Bazel build. 
+Wires the abseil/protobuf systemlib patches into the org_tensorflow http_archive,
+replaces the system TensorFlow path, and registers proto_bazel_features after
+tf_workspace2() creates @com_google_protobuf.
 ---
- WORKSPACE | 23 +++++++++++++++++++++++
- 1 file changed, 23 insertions(+)
+ WORKSPACE | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
 
 diff --git a/WORKSPACE b/WORKSPACE
-index 8100e6a..e6473e2 100644
+index 8100e6a..36474b5 100644
 --- a/WORKSPACE
 +++ b/WORKSPACE
 @@ -77,6 +77,8 @@ http_archive(
@@ -49,3 +51,16 @@ index 8100e6a..e6473e2 100644
  load("@pypi//:requirements.bzl", "install_deps")
  
  install_deps()
+@@ -172,6 +195,12 @@ load("@org_tensorflow//tensorflow:workspace2.bzl", "tf_workspace2")
+ 
+ tf_workspace2()
+ 
++# @com_google_protobuf is created by tf_workspace2(); register
++# proto_bazel_features now so protobuf's cc rules can resolve it.
++load("@org_tensorflow//third_party:protobuf_bazel_init.bzl", "protobuf_bazel_init")
++
++protobuf_bazel_init()
++
+ load("@org_tensorflow//tensorflow:workspace1.bzl", "tf_workspace1")
+ 
+ tf_workspace1()
