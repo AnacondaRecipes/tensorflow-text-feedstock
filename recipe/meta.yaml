@@ -28,6 +28,8 @@ source:
     - patches/0012-use-protobuf-proto-rules.patch
     # protobuf 7 marks ParseFromString [[nodiscard]]
     - patches/0013-silence-protobuf7-nodiscard.patch
+    # Provide ICU's data entry point from the bundled filtered data
+    - patches/0014-icu-data-entry-point.patch
 
 build:
   number: 0

@@ -30,7 +30,7 @@ new file mode 100644
 index 0000000..21eb316
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,1691 @@
+@@ -0,0 +1,1693 @@
 +diff --git a/.bazelrc b/.bazelrc
 +index 92e73998..f5e23bc9 100644
 +--- a/.bazelrc
@@ -201,11 +201,13 @@ index 0000000..21eb316
 +index 00000000..2867ba65
 +--- /dev/null
 ++++ b/third_party/protobuf_impl.bzl
-+@@ -0,0 +1,121 @@
++@@ -0,0 +1,123 @@
 ++
 ++def _protobuf_impl(ctx):
 ++    path = ctx.os.environ["PROTOBUF_BAZEL_DIR"]
-++    ctx.execute(["cp", "-r", path, "."])
+++    copy_result = ctx.execute(["/bin/cp", "-rL", path, "."])
+++    if copy_result.return_code != 0:
+++        fail("protobuf repo: copying %s failed (%d): %s" % (path, copy_result.return_code, copy_result.stderr))
 ++
 ++    syslib_label = ctx.attr.systemlib
 ++    syslib_path = ctx.path(syslib_label)
@@ -252,7 +254,7 @@ index 0000000..21eb316
 ++    cc_proto_content = ctx.read(cc_proto_bzl)
 ++    aspect_impl_needle = "def _aspect_impl(target, ctx):\n    proto_info = target[ProtoInfo]"
 ++    aspect_impl_repl = """def _aspect_impl(target, ctx):
-++    if target.label.workspace_name == "com_google_protobuf":
+++    if target.label.workspace_name in ("com_google_protobuf", "org_tensorflow", "xla", "tsl"):
 ++        if CcInfo in ctx.attr._protobuf_runtime:
 ++            return [
 ++                ctx.attr._protobuf_runtime[CcInfo],
