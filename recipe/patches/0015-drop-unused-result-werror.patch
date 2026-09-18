@@ -1,0 +1,30 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Anaconda Recipes <recipe-maintainers@anaconda.com>
+Date: Thu, 18 Sep 2026 12:00:00 -0600
+Subject: [PATCH] Drop -Werror=unused-result from the downloaded TF .bazelrc
+
+configure.sh downloads TF's .bazelrc as the build's main config, and its
+common:linux section promotes -Wunused-result to an error.  protobuf 7
+marks several APIs [[nodiscard]] (PrintToString, AppendToString,
+ParseFromString, ...), and TF/TSL/XLA sources ignore the returns in a
+number of places, so every linux build fails during compilation.
+
+Remove the -Werror promotion (keeping -Wunused-result as a warning),
+matching the tensorflow-feedstock approach for its own builds.
+---
+ oss_scripts/configure.sh | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/oss_scripts/configure.sh b/oss_scripts/configure.sh
+--- a/oss_scripts/configure.sh
++++ b/oss_scripts/configure.sh
+@@ -59,6 +59,9 @@ curl https://raw.githubusercontent.com/tensorflow/tensorflow/v2.21.0/.bazelversi
+ curl https://raw.githubusercontent.com/tensorflow/tensorflow/v2.21.0/.bazelrc -o .bazelrc
+ # This line breaks Windows builds, so we remove it.
+ sed -i -e 's/build --noincompatible_remove_legacy_whole_archive//' .bazelrc
++# protobuf 7 marks APIs [[nodiscard]]; drop -Werror=unused-result so ignored
++# returns in TF/TSL/XLA sources stay warnings on linux.
++sed -i -e 's/ --copt="-Werror=unused-result"//' .bazelrc
+ 
+ write_to_bazelrc "build:manylinux2014 --config=release_cpu_linux"
+ write_to_bazelrc "test --test_env=TF_USE_LEGACY_KERAS=1"

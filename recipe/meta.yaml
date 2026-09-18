@@ -30,6 +30,8 @@ source:
     - patches/0013-silence-protobuf7-nodiscard.patch
     # Provide ICU's data entry point from the bundled filtered data
     - patches/0014-icu-data-entry-point.patch
+    # Drop -Werror=unused-result from the TF .bazelrc that configure.sh downloads
+    - patches/0015-drop-unused-result-werror.patch
 
 build:
   number: 0
