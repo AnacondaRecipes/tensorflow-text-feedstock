@@ -1724,3 +1724,36 @@ index 0000000..21eb316
 +     )
 + 
 +     java_import_external(
++diff --git a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
++--- a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
+++++ b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
++@@ -34,7 +34,7 @@ std::string LegacyUnredactedDebugString(const tsl::protobuf::Message& message) {
++   tsl::protobuf::TextFormat::Printer printer;
++   printer.SetExpandAny(true);
++ 
++-  printer.PrintToString(message, &debug_string);
+++  (void)printer.PrintToString(message, &debug_string);
++   return debug_string;
++ }
++ 
++@@ -50,7 +50,7 @@ std::string LegacyUnredactedShortDebugString(
++   printer.SetSingleLineMode(true);
++   printer.SetExpandAny(true);
++ 
++-  printer.PrintToString(message, &debug_string);
+++  (void)printer.PrintToString(message, &debug_string);
++   if (!debug_string.empty() && debug_string.back() == ' ') {
++     debug_string.pop_back();
++   }
++diff --git a/tensorflow/core/platform/tensor_coding.cc b/tensorflow/core/platform/tensor_coding.cc
++--- a/tensorflow/core/platform/tensor_coding.cc
+++++ b/tensorflow/core/platform/tensor_coding.cc
++@@ -92,7 +92,7 @@ class StringListEncoderImpl : public StringListEncoder {
++   void Append(const protobuf::MessageLite& m) override {
++     core::PutVarint32(out_, m.ByteSizeLong());
++     tensorflow::string serialized_message;
++-    m.AppendToString(&serialized_message);
+++    (void)m.AppendToString(&serialized_message);
++     absl::StrAppend(&rest_, serialized_message);
++   }
++ 
