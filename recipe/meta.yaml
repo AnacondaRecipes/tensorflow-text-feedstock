@@ -1,5 +1,5 @@
 {% set name = "tensorflow-text" %}
-{% set version = "2.20.1" %}
+{% set version = "2.21.0" %}
 
 package:
   name: {{ name }}
@@ -8,7 +8,7 @@ package:
 source:
   # path: ../../tensorflow-text
   url: https://github.com/{{ name.split('-')[0] }}/{{ name.split('-')[1] }}/archive/v{{ version }}.tar.gz
-  sha256: f04cd737b64ac7bdbba46ac649f5de7c30e4e4ccd78c41ead8999758bf6f3685
+  sha256: 2384b83552648c32ecb7590490cea4e9411cab454f1c360e0bdc849176e4e838
   patches:
     - patches/0001-Bazel-parallel-build-removed-added-server-cleanup-af.patch
     - patches/0002-Remove-setuptools-hard-pin.patch
@@ -16,7 +16,6 @@ source:
     # Fix missing absl/strings/str_cat.h includes in tensorflow-text source
     - patches/0004-Add-missing-str_cat-includes.patch
     # Create patch files for TensorFlow (applied during Bazel build)
-    - patches/0005-Create-tflite-tensor-view-patch.patch
     - patches/0006-Create-abseil-systemlib-patch.patch
     # Apply the above patches to TensorFlow archive in WORKSPACE
     - patches/0007-Apply-patches-to-TensorFlow-archive.patch
@@ -25,6 +24,14 @@ source:
     - patches/0009-Create-protobuf-systemlib-patch.patch
     - patches/0010-add-pythonpath-to-sys.path.patch
     - patches/0011-exclude-tflite_registrar-module.patch
+    # Use protobuf's proto rules so the toolchain provider matches
+    - patches/0012-use-protobuf-proto-rules.patch
+    # protobuf 7 marks ParseFromString [[nodiscard]]
+    - patches/0013-silence-protobuf7-nodiscard.patch
+    # Provide ICU's data entry point from the bundled filtered data
+    - patches/0014-icu-data-entry-point.patch
+    # Drop -Werror=unused-result from the TF .bazelrc that configure.sh downloads
+    - patches/0015-drop-unused-result-werror.patch
 
 build:
   number: 0
@@ -45,9 +52,8 @@ build:
     - libcxx                               # [osx]
     - zlib                                 # [osx]
   # Latest version of supported python 3.13, look requirements_lock files
-  skip: true  # [py>313]
   # TODO: add support for windows
-  skip: true  # [win]
+  skip: true  # [py>313 or win]
 
 requirements:
   build:
@@ -64,19 +70,24 @@ requirements:
     - setuptools >=70.0.0,<76
     - wheel
     # The version of tensorflow has to match the version of tensorflow-text
-    - tensorflow ==2.20.0
+    - tensorflow ==2.21.0
     - _tflow_select 2.3.0 {{ tensorflow_flavor }}
     - libabseil {{ libabseil }}
     - libprotobuf {{ libprotobuf }}
+    - libgrpc {{ libgrpc }}
+    - icu {{ icu }}
+    - protobuf-bazel-rules {{ libprotobuf.split('.', 1)[1] }}
+    - libzlib {{ libzlib }}  # [linux]
   run:
     - python
-    - tensorflow >=2.20.0,<2.21    
+    - tensorflow >=2.21.0,<2.22
     - _tflow_select * {{ tensorflow_flavor }}
     - libabseil {{ libabseil }}
-    - libzlib  # [linux]
+    - icu {{ icu }}
+    - libzlib {{ libzlib }}  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0
-    - tensorflow-cpu >=2.20.0,<2.21
+    - tensorflow-cpu >=2.21.0,<2.22
     - tensorflow-hub >=0.16.1
 
 test:

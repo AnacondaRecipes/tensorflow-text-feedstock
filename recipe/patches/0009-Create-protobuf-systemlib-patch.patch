@@ -1,526 +1,394 @@
 From 72fbba3d20f4616d7312b5e2b7f79daf6e82f2fa Fri Mar 13 11:11:00 2026
 From: Valentyna Khomits <vkhomits@gmail.com>
 Date: Fri, 13 Mar 2026 11:11:00 +0200
-Subject: [PATCH] Create protobuf patch for TensorFlow
+Subject: [PATCH] Create protobuf systemlib patch for TensorFlow
 
+Creates protobuf_systemlib.patch that gets applied to the TensorFlow source
+during Bazel build, replacing the vendored protobuf download with a repo
+built from conda's protobuf-bazel-rules package (jaxlib-style), plus the
+systemlib BUILD/bzl files for protobuf, grpc and python rules, and the
+.bazelrc changes (drop -Werror=unused-result on linux for protobuf 7
+nodiscard warnings).
+Regenerated against TensorFlow 2.21.0.
 ---
+ third_party/tensorflow/BUILD                    |    2 +-
+ third_party/tensorflow/protobuf_systemlib.patch | 1691 +++++++++++++++++++++++
+ 2 files changed, 1692 insertions(+), 1 deletion(-)
+
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
+index 5c63f95..f2aa6ef 100644
 --- a/third_party/tensorflow/BUILD
 +++ b/third_party/tensorflow/BUILD
 @@ -1,4 +1,4 @@
  # Needed for Bazel to treat this directory as a package
  
  # Export patch files for use by http_archive rules
--exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch"])
-+exports_files(["tflite_tensor_view_fix.patch", "abseil_systemlib.patch", "protobuf_systemlib.patch"])
+-exports_files(["abseil_systemlib.patch"])
++exports_files(["abseil_systemlib.patch", "protobuf_systemlib.patch"])
 diff --git a/third_party/tensorflow/protobuf_systemlib.patch b/third_party/tensorflow/protobuf_systemlib.patch
 new file mode 100644
+index 0000000..21eb316
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,565 @@
+@@ -0,0 +1,1743 @@
++diff --git a/.bazelrc b/.bazelrc
++index 92e73998..f5e23bc9 100644
++--- a/.bazelrc
+++++ b/.bazelrc
++@@ -410,7 +410,7 @@ common:ios --noenable_platform_specific_config
++ common:android --copt=-w
++ common:ios --copt=-w
++ common:linux --host_copt=-w
++-common:macos --copt=-w
+++common:macos --copt=-w --copt=-Wno-c++11-narrowing
++ common:windows --copt=/W0
++ common:windows --host_copt=/W0
++ 
++@@ -425,7 +425,6 @@ common:linux --copt="-Wno-array-bounds"
++ 
++ # Add unused-result as an error on Linux.
++ common:linux --copt="-Wunused-result"
++-common:linux --copt="-Werror=unused-result"
++ # Add switch as an error on Linux.
++ common:linux --copt="-Wswitch"
++ common:linux --copt="-Werror=switch"
++diff --git a/WORKSPACE b/WORKSPACE
++index 6e4a63ff..f37b5d54 100644
++--- a/WORKSPACE
+++++ b/WORKSPACE
++@@ -64,6 +64,10 @@ load("@xla//third_party/py:python_init_rules.bzl", "python_init_rules")
++ 
++ python_init_rules()
++ 
+++load("@//third_party:protobuf_bazel_init.bzl", "protobuf_bazel_init")
+++
+++protobuf_bazel_init()
+++
++ load("@xla//third_party/py:python_init_repositories.bzl", "python_init_repositories")
++ 
++ python_init_repositories(
++@@ -99,6 +103,7 @@ load("@//tensorflow:workspace2.bzl", "tf_workspace2")
++ 
++ tf_workspace2()
++ 
+++
++ load("@//tensorflow:workspace1.bzl", "tf_workspace1")
++ 
++ tf_workspace1()
 +diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
-+index 9e49ab40b25..edb27ac7c12 100644
++index 94151996..788e2c80 100644
 +--- a/tensorflow/workspace2.bzl
 ++++ b/tensorflow/workspace2.bzl
-+@@ -394,9 +394,32 @@ def _tf_repositories():
-+         urls = tf_mirror_urls("https://github.com/abseil/abseil-py/archive/refs/tags/v2.1.0.tar.gz"),
++@@ -48,6 +48,7 @@ load("@xla//tools/toolchains/embedded/arm-linux:arm_linux_toolchain_configure.bz
++ load("@xla//tools/toolchains/remote:configure.bzl", "remote_execution_configure")
++ load("@xla//tools/toolchains/remote_config:configs.bzl", "initialize_rbe_configs")
++ load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
+++load("//third_party:protobuf_impl.bzl", "protobuf_bazel_repo")
++ load("//third_party/com_google_highway:workspace.bzl", com_google_highway = "repo")
++ load("//third_party/flatbuffers:workspace.bzl", flatbuffers = "repo")
++ load("//third_party/hexagon:workspace.bzl", hexagon_nn = "repo")
++@@ -405,16 +406,14 @@ def _tf_repositories():
 +     )
 + 
-++    SYS_FILES = [
-++        "bazel/BUILD.bazel",
-++        "bazel/cc_proto_library.bzl",
-++        "bazel/common/BUILD.bazel",
-++        "bazel/common/proto_common.bzl",
-++        "bazel/common/proto_info.bzl",
-++        "bazel/private/BUILD.bazel",
-++        "bazel/private/native.bzl",
-++        "bazel/py_proto_library.bzl",
-++    ]
-++    SYS_LINKS = {
-++        "@org_tensorflow//third_party/systemlibs:protobuf.bazel.{f}".format(
-++            f = f.replace("bazel/", "", 1).replace("/", ".")
-++        ): f
-++        for f in SYS_FILES
-++    }
-++    SYS_LINKS.update({
-++        "@org_tensorflow//third_party/systemlibs:protobuf.bzl": "protobuf.bzl",
-++        "@org_tensorflow//third_party/systemlibs:protobuf_deps.bzl": "protobuf_deps.bzl",
-++    })
++     maybe(
++-        tf_http_archive,
+++        protobuf_bazel_repo,
++         name = "com_google_protobuf",
++-        patch_file = ["@xla//third_party/protobuf:protobuf.patch"],
++-        sha256 = "6e09bbc950ba60c3a7b30280210cd285af8d7d8ed5e0a6ed101c72aff22e8d88",
++-        strip_prefix = "protobuf-6.31.1",
++-        urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.zip"),
++-        repo_mapping = {
++-            "@abseil-cpp": "@com_google_absl",
++-            "@protobuf_pip_deps": "@pypi",
++-        },
+++        systemlib = "//third_party:protobuf_systemlib.BUILD",
+++        python_build = "//third_party/systemlibs:protobuf.python.BUILD",
+++        python_google_build = "//third_party/systemlibs:protobuf.python.google.BUILD",
+++        python_google_protobuf_build = "//third_party/systemlibs:protobuf.python.google.protobuf.BUILD",
+++        python_dist_build = "//third_party/systemlibs:protobuf.python.dist.BUILD",
+++        python_dist_system_python = "//third_party/systemlibs:protobuf.python.dist.system_python.bzl",
++     )
++ 
++     tf_http_archive(
++@@ -474,6 +473,16 @@ def _tf_repositories():
++         patch_file = [
++             "@xla//third_party/grpc:grpc.patch",
++         ],
+++        system_link_files = {
+++            "//third_party/systemlibs:BUILD.bazel": "bazel/BUILD",
+++            "//third_party/systemlibs:grpc.BUILD": "src/compiler/BUILD",
+++            "//third_party/systemlibs:grpc.bazel.grpc_deps.bzl": "bazel/grpc_deps.bzl",
+++            "//third_party/systemlibs:grpc.bazel.grpc_extra_deps.bzl": "bazel/grpc_extra_deps.bzl",
+++            "//third_party/systemlibs:grpc.bazel.cc_grpc_library.bzl": "bazel/cc_grpc_library.bzl",
+++            "//third_party/systemlibs:grpc.bazel.generate_cc.bzl": "bazel/generate_cc.bzl",
+++            "//third_party/systemlibs:grpc.bazel.protobuf.bzl": "bazel/protobuf.bzl",
+++            "//third_party/systemlibs:grpc.bazel.python_rules.bzl": "bazel/python_rules.bzl",
+++        },
++         urls = tf_mirror_urls("https://github.com/grpc/grpc/archive/refs/tags/v1.74.0.tar.gz"),
++     )
++ 
++@@ -802,6 +811,10 @@ def _tf_repositories():
++         urls = tf_mirror_urls("https://github.com/pybind/pybind11_protobuf/archive/f02a2b7653bc50eb5119d125842a3870db95d251.zip"),
++         sha256 = "3cf7bf0f23954c5ce6c37f0a215f506efa3035ca06e3b390d67f4cbe684dce23",
++         strip_prefix = "pybind11_protobuf-f02a2b7653bc50eb5119d125842a3870db95d251",
+++        patch_file = [
+++            "//third_party/pybind11_protobuf:0001-make-proto_cast_util-visible.patch",
+++            "//third_party/pybind11_protobuf:0002-protobuf7-descriptor-database-string-view.patch",
+++        ],
++     )
++ 
++     tf_http_archive(
++diff --git a/tensorflow/workspace3.bzl b/tensorflow/workspace3.bzl
++index 2f724422..ed1d8185 100644
++--- a/tensorflow/workspace3.bzl
+++++ b/tensorflow/workspace3.bzl
++@@ -21,12 +21,20 @@ def workspace():
++     # https://github.com/bazelbuild/bazel-skylib/releases
++     tf_http_archive(
++         name = "bazel_skylib",
++-        sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
+++        sha256 = "51b5105a760b353773f904d2bbc5e664d0987fbaf22265164de65d43e910d8ac",
++         urls = tf_mirror_urls(
++-            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.7.1/bazel-skylib-1.7.1.tar.gz",
+++            "https://github.com/bazelbuild/bazel-skylib/releases/download/1.8.1/bazel-skylib-1.8.1.tar.gz",
++         ),
++     )
++ 
+++    tf_http_archive(
+++        name = "rules_java",
+++        urls = tf_mirror_urls(
+++            "https://github.com/bazelbuild/rules_java/releases/download/7.12.5/rules_java-7.12.5.tar.gz",
+++        ),
+++        sha256 = "17b18cb4f92ab7b94aa343ce78531b73960b1bed2ba166e5b02c9fdf0b0ac270",
+++    )
 ++
 +     tf_http_archive(
-+         name = "com_google_protobuf",
-+         patch_file = ["@local_xla//third_party/protobuf:protobuf.patch"],
-++        system_build_file = "@org_tensorflow//third_party/systemlibs:protobuf.BUILD",
-++        system_link_files = SYS_LINKS,
-+         sha256 = "f645e6e42745ce922ca5388b1883ca583bafe4366cc74cf35c3c9299005136e2",
-+         strip_prefix = "protobuf-5.28.3",
-+         urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/refs/tags/v5.28.3.zip"),
-+diff --git a/third_party/systemlibs/protobuf.bazel.BUILD.bazel b/third_party/systemlibs/protobuf.bazel.BUILD.bazel
++         name = "rules_license",
++         urls = tf_mirror_urls(
++@@ -45,10 +53,10 @@ def workspace():
++ 
++     tf_http_archive(
++         name = "bazel_features",
++-        sha256 = "4fd9922d464686820ffd8fcefa28ccffa147f7cdc6b6ac0d8b07fde565c65d66",
++-        strip_prefix = "bazel_features-1.25.0",
+++        sha256 = "c41853e3b636c533b86bf5ab4658064e6cc9db0a3bce52cbff0629e094344ca9",
+++        strip_prefix = "bazel_features-1.33.0",
++         urls = tf_mirror_urls(
++-            "https://github.com/bazel-contrib/bazel_features/releases/download/v1.25.0/bazel_features-v1.25.0.tar.gz",
+++            "https://github.com/bazel-contrib/bazel_features/releases/download/v1.33.0/bazel_features-v1.33.0.tar.gz",
++         ),
++     )
++ 
++diff --git a/third_party/protobuf_bazel_init.bzl b/third_party/protobuf_bazel_init.bzl
 +new file mode 100644
++index 00000000..eb0568e3
 +--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.BUILD.bazel
-+@@ -0,0 +1,57 @@
-++# Copyright (c) 2009-2021, Google LLC
-++# All rights reserved.
-++#
-++# Use of this source code is governed by a BSD-style
-++# license that can be found in the LICENSE file or at
-++# https://developers.google.com/open-source/licenses/bsd
+++++ b/third_party/protobuf_bazel_init.bzl
++@@ -0,0 +1,10 @@
+++"""Register companion repos required by protobuf-bazel-rules."""
 ++
-++load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+++load("@com_google_protobuf//bazel/private/oss:proto_bazel_features.bzl", "proto_bazel_features")
+++load("@com_google_protobuf//python/dist:system_python.bzl", "system_python")
 ++
-++licenses(["notice"])
-++
-++bzl_library(
-++    name = "proto_library_bzl",
-++    srcs = ["proto_library.bzl"],
-++    visibility = ["//visibility:public"],
-++)
-++
-++bzl_library(
-++    name = "cc_proto_library_bzl",
-++    srcs = ["cc_proto_library.bzl"],
-++    visibility = ["//visibility:public"],
-++)
-++
-++bzl_library(
-++    name = "java_proto_library_bzl",
-++    srcs = ["java_proto_library.bzl"],
-++    visibility = ["//visibility:public"],
-++)
-++
-++bzl_library(
-++    name = "java_lite_proto_library_bzl",
-++    srcs = ["java_lite_proto_library.bzl"],
-++    visibility = ["//visibility:public"],
-++)
-++
-++bzl_library(
-++    name = "py_proto_library_bzl",
-++    srcs = ["py_proto_library.bzl"],
-++    visibility = ["//visibility:public"],
-++    deps = [
-++        "//bazel/common:proto_common_bzl",
-++        "//bazel/common:proto_info_bzl",
-++        "@rules_python//python:py_info_bzl",
-++    ],
-++)
-++
-++bzl_library(
-++    name = "upb_proto_library_bzl",
-++    srcs = [
-++        "upb_c_proto_library.bzl",
-++        "upb_minitable_proto_library.bzl",
-++        "upb_proto_library.bzl",
-++        "upb_proto_reflection_library.bzl",
-++    ],
-++    visibility = ["//visibility:public"],
-++    deps = ["//bazel/private:upb_proto_library_internal_bzl"],
-++)
-+diff --git a/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl
+++def protobuf_bazel_init():
+++    """Call after python_init_rules() once @com_google_protobuf exists."""
+++    proto_bazel_features(name = "proto_bazel_features")
+++    if not native.existing_rule("system_python"):
+++        system_python(name = "system_python")
++diff --git a/third_party/protobuf_impl.bzl b/third_party/protobuf_impl.bzl
 +new file mode 100644
++index 00000000..2867ba65
 +--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl
-+@@ -0,0 +1,3 @@
-++"""cc_proto_library rule"""
+++++ b/third_party/protobuf_impl.bzl
++@@ -0,0 +1,123 @@
 ++
-++cc_proto_library = native.cc_proto_library
-+diff --git a/third_party/systemlibs/protobuf.bazel.common.BUILD.bazel b/third_party/systemlibs/protobuf.bazel.common.BUILD.bazel
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.common.BUILD.bazel
-+@@ -0,0 +1,34 @@
-++load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+++def _protobuf_impl(ctx):
+++    path = ctx.os.environ["PROTOBUF_BAZEL_DIR"]
+++    copy_result = ctx.execute(["/bin/cp", "-rL", path, "."])
+++    if copy_result.return_code != 0:
+++        fail("protobuf repo: copying %s failed (%d): %s" % (path, copy_result.return_code, copy_result.stderr))
 ++
-++bzl_library(
-++    name = "proto_common_bzl",
-++    srcs = [
-++        "proto_common.bzl",
-++    ],
-++    visibility = ["//visibility:public"],
-++    deps = [
-++        "//bazel/private:native_bzl",
-++    ],
-++)
+++    syslib_label = ctx.attr.systemlib
+++    syslib_path = ctx.path(syslib_label)
+++    ctx.execute(["cp", syslib_path, "BUILD"])
+++    ctx.report_progress("Copied systemlib.BUILD")
 ++
-++bzl_library(
-++    name = "proto_info_bzl",
-++    srcs = [
-++        "proto_info.bzl",
-++    ],
-++    visibility = ["//visibility:public"],
-++    deps = [
-++        "//bazel/private:native_bzl",
-++    ],
-++)
-++
-++bzl_library(
-++    name = "proto_lang_toolchain_info_bzl",
-++    srcs = [
-++        "proto_lang_toolchain_info.bzl",
-++    ],
-++    visibility = ["//visibility:public"],
-++    deps = [
-++        ":proto_common.bzl",
-++    ],
-++)
-+diff --git a/third_party/systemlibs/protobuf.bazel.common.proto_common.bzl b/third_party/systemlibs/protobuf.bazel.common.proto_common.bzl
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.common.proto_common.bzl
-+@@ -0,0 +1,5 @@
-++"""proto_common"""
-++
-++load("//bazel/private:native.bzl", "native_proto_common")
-++
-++proto_common = native_proto_common
-+diff --git a/third_party/systemlibs/protobuf.bazel.common.proto_info.bzl b/third_party/systemlibs/protobuf.bazel.common.proto_info.bzl
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.common.proto_info.bzl
-+@@ -0,0 +1,5 @@
-++"""ProtoInfo"""
-++
-++load("//bazel/private:native.bzl", "NativeProtoInfo")
-++
-++ProtoInfo = NativeProtoInfo
-+diff --git a/third_party/systemlibs/protobuf.bazel.private.BUILD.bazel b/third_party/systemlibs/protobuf.bazel.private.BUILD.bazel
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.private.BUILD.bazel
-+@@ -0,0 +1,42 @@
-++# Copyright (c) 2009-2021, Google LLC
-++# All rights reserved.
-++#
-++# Use of this source code is governed by a BSD-style
-++# license that can be found in the LICENSE file or at
-++# https://developers.google.com/open-source/licenses/bsd
-++
-++load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
-++
-++licenses(["notice"])
-++
-++bzl_library(
-++    name = "upb_proto_library_internal_bzl",
-++    srcs = [
-++        "upb_proto_library_internal/aspect.bzl",
-++        "upb_proto_library_internal/cc_library_func.bzl",
-++        "upb_proto_library_internal/copts.bzl",
-++        "upb_proto_library_internal/rule.bzl",
-++    ],
-++    visibility = ["//bazel:__pkg__"],
-++    deps = [
-++        "//bazel/common:proto_common_bzl",
-++        "@bazel_skylib//lib:paths",
-++        "@bazel_tools//tools/cpp:toolchain_utils.bzl",
-++    ],
-++)
-++
-++bzl_library(
-++    name = "native_bzl",
-++    srcs = [
-++        "native.bzl",
-++    ],
-++    visibility = ["//bazel:__subpackages__"],
-++)
-++
-++bzl_library(
-++    name = "proto_toolchain_rule_bzl",
-++    srcs = [
-++        "proto_toolchain_rule.bzl",
-++    ],
-++    visibility = ["//bazel:__subpackages__"],
-++)
-+diff --git a/third_party/systemlibs/protobuf.bazel.private.native.bzl b/third_party/systemlibs/protobuf.bazel.private.native.bzl
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.private.native.bzl
-+@@ -0,0 +1,5 @@
-++"""Renames toplevel symbols so they can be exported in Starlark under the same name"""
-++
-++NativeProtoInfo = ProtoInfo
-++
-++native_proto_common = proto_common_do_not_use
-+diff --git a/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl
-+new file mode 100644
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl
-+@@ -0,0 +1,211 @@
-++"""The implementation of the `py_proto_library` rule and its aspect."""
-++
-++load("@rules_python//python:py_info.bzl", "PyInfo")
-++load("//bazel/common:proto_common.bzl", "proto_common")
-++load("//bazel/common:proto_info.bzl", "ProtoInfo")
-++
-++PY_PROTO_TOOLCHAIN = "@rules_python//python/proto:toolchain_type"
-++
-++_PyProtoInfo = provider(
-++    doc = "Encapsulates information needed by the Python proto rules.",
-++    fields = {
-++        "imports": """
-++            (depset[str]) The field forwarding PyInfo.imports coming from
-++            the proto language runtime dependency.""",
-++        "runfiles_from_proto_deps": """
-++            (depset[File]) Files from the transitive closure implicit proto
-++            dependencies""",
-++        "transitive_sources": """(depset[File]) The Python sources.""",
-++    },
-++)
-++
-++def _filter_provider(provider, *attrs):
-++    return [dep[provider] for attr in attrs for dep in attr if provider in dep]
-++
-++def _incompatible_toolchains_enabled():
-++    return getattr(proto_common, "INCOMPATIBLE_ENABLE_PROTO_TOOLCHAIN_RESOLUTION", False)
-++
-++def _py_proto_aspect_impl(target, ctx):
-++    """Generates and compiles Python code for a proto_library.
-++
-++    The function runs protobuf compiler on the `proto_library` target generating
-++    a .py file for each .proto file.
-++
-++    Args:
-++      target: (Target) A target providing `ProtoInfo`. Usually this means a
-++         `proto_library` target, but not always; you must expect to visit
-++         non-`proto_library` targets, too.
-++      ctx: (RuleContext) The rule context.
-++
-++    Returns:
-++      ([_PyProtoInfo]) Providers collecting transitive information about
-++      generated files.
-++    """
-++
-++    _proto_library = ctx.rule.attr
-++
-++    # Check Proto file names
-++    for proto in target[ProtoInfo].direct_sources:
-++        if proto.is_source and "-" in proto.dirname:
-++            fail("Cannot generate Python code for a .proto whose path contains '-' ({}).".format(
-++                proto.path,
-++            ))
-++
-++    if _incompatible_toolchains_enabled():
-++        toolchain = ctx.toolchains[PY_PROTO_TOOLCHAIN]
-++        if not toolchain:
-++            fail("No toolchains registered for '%s'." % PY_PROTO_TOOLCHAIN)
-++        proto_lang_toolchain_info = toolchain.proto
-++    else:
-++        proto_lang_toolchain_info = getattr(ctx.attr, "_aspect_proto_toolchain")[proto_common.ProtoLangToolchainInfo]
-++
-++    api_deps = [proto_lang_toolchain_info.runtime]
-++
-++    generated_sources = []
-++    proto_info = target[ProtoInfo]
-++    proto_root = proto_info.proto_source_root
-++    if proto_info.direct_sources:
-++        # Generate py files
-++        generated_sources = proto_common.declare_generated_files(
-++            actions = ctx.actions,
-++            proto_info = proto_info,
-++            extension = "_pb2.py",
-++            name_mapper = lambda name: name.replace("-", "_").replace(".", "/"),
-++        )
-++
-++        # Handles multiple repository and virtual import cases
-++        if proto_root.startswith(ctx.bin_dir.path):
-++            proto_root = proto_root[len(ctx.bin_dir.path) + 1:]
-++
-++        plugin_output = ctx.bin_dir.path + "/" + proto_root
-++        proto_root = ctx.workspace_name + "/" + proto_root
-++
-++        proto_common.compile(
-++            actions = ctx.actions,
-++            proto_info = proto_info,
-++            proto_lang_toolchain_info = proto_lang_toolchain_info,
-++            generated_files = generated_sources,
-++            plugin_output = plugin_output,
-++        )
-++
-++    # Generated sources == Python sources
-++    python_sources = generated_sources
-++
-++    deps = _filter_provider(_PyProtoInfo, getattr(_proto_library, "deps", []))
-++    runfiles_from_proto_deps = depset(
-++        transitive = [dep[DefaultInfo].default_runfiles.files for dep in api_deps] +
-++                     [dep.runfiles_from_proto_deps for dep in deps],
-++    )
-++    transitive_sources = depset(
-++        direct = python_sources,
-++        transitive = [dep.transitive_sources for dep in deps],
+++    # Native proto_library depends on protoc_minimal; point at host protoc.
+++    ctx.execute(["mkdir", "-p", "src/google/protobuf/compiler"])
+++    ctx.file(
+++        "src/google/protobuf/compiler/BUILD",
+++        "genrule(name = \"protoc_minimal\", outs = [\"protoc_minimal.bin\"], cmd = \"ln -s $(PREFIX)/bin/protoc $@\", executable = 1, visibility = [\"//visibility:public\"])\n",
 ++    )
 ++
-++    return [
-++        _PyProtoInfo(
-++            imports = depset(
-++                # Adding to PYTHONPATH so the generated modules can be
-++                # imported.  This is necessary when there is
-++                # strip_import_prefix, the Python modules are generated under
-++                # _virtual_imports. But it's undesirable otherwise, because it
-++                # will put the repo root at the top of the PYTHONPATH, ahead of
-++                # directories added through `imports` attributes.
-++                [proto_root] if "_virtual_imports" in proto_root else [],
-++                transitive = [dep[PyInfo].imports for dep in api_deps] + [dep.imports for dep in deps],
-++            ),
-++            runfiles_from_proto_deps = runfiles_from_proto_deps,
-++            transitive_sources = transitive_sources,
-++        ),
-++    ]
-++
-++_py_proto_aspect = aspect(
-++    implementation = _py_proto_aspect_impl,
-++    attrs = {} if _incompatible_toolchains_enabled() else {
-++        "_aspect_proto_toolchain": attr.label(
-++            default = "//python:python_toolchain",
-++        ),
-++    },
-++    attr_aspects = ["deps"],
-++    required_providers = [ProtoInfo],
-++    provides = [_PyProtoInfo],
-++    toolchains = [PY_PROTO_TOOLCHAIN] if _incompatible_toolchains_enabled() else [],
-++)
-++
-++def _py_proto_library_rule(ctx):
-++    """Merges results of `py_proto_aspect` in `deps`.
-++
-++    Args:
-++      ctx: (RuleContext) The rule context.
-++    Returns:
-++      ([PyInfo, DefaultInfo, OutputGroupInfo])
-++    """
-++    if not ctx.attr.deps:
-++        fail("'deps' attribute mustn't be empty.")
-++
-++    pyproto_infos = _filter_provider(_PyProtoInfo, ctx.attr.deps)
-++    default_outputs = depset(
-++        transitive = [info.transitive_sources for info in pyproto_infos],
+++    # Stub io targets referenced by TSL build_config.bzl.
+++    ctx.execute(["mkdir", "-p", "src/google/protobuf/io"])
+++    ctx.file(
+++        "src/google/protobuf/io/BUILD",
+++        "package(default_visibility = [\"//visibility:public\"])\n\ncc_library(name = \"io\", linkopts = [\"-lprotobuf\"])\n\ncc_library(name = \"tokenizer\", linkopts = [\"-lprotobuf\"])\n",
 ++    )
 ++
-++    return [
-++        DefaultInfo(
-++            files = default_outputs,
-++            default_runfiles = ctx.runfiles(transitive_files = depset(
-++                transitive =
-++                    [default_outputs] +
-++                    [info.runfiles_from_proto_deps for info in pyproto_infos],
-++            )),
-++        ),
-++        OutputGroupInfo(
-++            default = depset(),
-++        ),
-++        PyInfo(
-++            transitive_sources = default_outputs,
-++            imports = depset(transitive = [info.imports for info in pyproto_infos]),
-++            # Proto always produces 2- and 3- compatible source files
-++            has_py2_only_sources = False,
-++            has_py3_only_sources = False,
-++        ),
-++    ]
+++    # python/ stubs required by protobuf-bazel-rules toolchains.
+++    ctx.execute(["mkdir", "-p", "python"])
+++    ctx.execute(["cp", ctx.path(ctx.attr.python_build), "python/BUILD.bazel"])
 ++
-++py_proto_library = rule(
-++    implementation = _py_proto_library_rule,
-++    doc = """
-++      Use `py_proto_library` to generate Python libraries from `.proto` files.
+++    ctx.execute(["mkdir", "-p", "python/google/protobuf"])
+++    ctx.execute(["cp", ctx.path(ctx.attr.python_google_build), "python/google/BUILD.bazel"])
+++    ctx.execute(["cp", ctx.path(ctx.attr.python_google_protobuf_build), "python/google/protobuf/BUILD.bazel"])
 ++
-++      The convention is to name the `py_proto_library` rule `foo_py_pb2`,
-++      when it is wrapping `proto_library` rule `foo_proto`.
+++    # python/dist stubs referenced during repository mapping (protobuf_deps.bzl).
+++    ctx.execute(["mkdir", "-p", "python/dist"])
+++    ctx.execute(["cp", ctx.path(ctx.attr.python_dist_build), "python/dist/BUILD.bazel"])
+++    ctx.execute(["cp", ctx.path(ctx.attr.python_dist_system_python), "python/dist/system_python.bzl"])
 ++
-++      `deps` must point to a `proto_library` rule.
+++    # Stub prebuilt toolchain registrations from copied bazel rules.
+++    ctx.execute(["mkdir", "-p", "toolchain"])
+++    ctx.file("toolchain/BUILD", "")
+++    ctx.file(
+++        "toolchain/platforms.bzl",
+++        "PROTOBUF_PLATFORMS = {}\n",
+++    )
 ++
-++      Example:
+++    # WKT types live in system libprotobuf; skip cc codegen inside @com_google_protobuf.
+++    cc_proto_bzl = "bazel/private/oss/cc_proto_library.bzl"
+++    cc_proto_content = ctx.read(cc_proto_bzl)
+++    aspect_impl_needle = "def _aspect_impl(target, ctx):\n    proto_info = target[ProtoInfo]"
+++    aspect_impl_repl = """def _aspect_impl(target, ctx):
+++    if target.label.workspace_name in ("com_google_protobuf", "org_tensorflow", "xla", "tsl"):
+++        if CcInfo in ctx.attr._protobuf_runtime:
+++            return [
+++                ctx.attr._protobuf_runtime[CcInfo],
+++                _ProtoCcFilesInfo(files = depset()),
+++                OutputGroupInfo(),
+++                _ProtoCcHeaderInfo(headers = depset()),
+++            ]
+++        return [
+++            CcInfo(),
+++            _ProtoCcFilesInfo(files = depset()),
+++            OutputGroupInfo(),
+++            _ProtoCcHeaderInfo(headers = depset()),
+++        ]
 ++
-++```starlark
-++py_library(
-++    name = "lib",
-++    deps = [":foo_py_pb2"],
-++)
+++    proto_info = target[ProtoInfo]"""
+++    aspect_attrs_needle = "    attrs = {\n                \"_cc_proto_library_header_suffixes\":"
+++    aspect_attrs_repl = "    attrs = {\n                \"_protobuf_runtime\": attr.label(\n                    default = \"//:protobuf\",\n                ),\n                \"_cc_toolchain\": attr.label(\n                    default = \"@bazel_tools//tools/cpp:current_cc_toolchain\",\n                ),\n                \"_cc_proto_library_header_suffixes\":"
+++    if aspect_impl_needle not in cc_proto_content:
+++        fail("cc_proto_library.bzl: aspect impl anchor not found")
+++    if aspect_attrs_needle not in cc_proto_content:
+++        fail("cc_proto_library.bzl: aspect attrs anchor not found")
+++    cc_proto_content = cc_proto_content.replace(aspect_impl_needle, aspect_impl_repl, 1)
+++    cc_proto_content = cc_proto_content.replace(aspect_attrs_needle, aspect_attrs_repl, 1)
+++    cc_proto_content = cc_proto_content.replace(
+++        'load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")',
+++        'load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "use_cpp_toolchain")',
+++    )
+++    cc_proto_content = cc_proto_content.replace(
+++        "use_cc_toolchain()",
+++        "use_cpp_toolchain()",
+++    )
+++    ctx.file(cc_proto_bzl, cc_proto_content)
 ++
-++py_proto_library(
-++    name = "foo_py_pb2",
-++    deps = [":foo_proto"],
-++)
+++    cc_proto_support_bzl = "bazel/private/cc_proto_support.bzl"
+++    cc_proto_support_content = ctx.read(cc_proto_support_bzl)
+++    cc_proto_support_content = cc_proto_support_content.replace(
+++        'load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")',
+++        'load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")',
+++    )
+++    cc_proto_support_content = cc_proto_support_content.replace(
+++        "find_cc_toolchain(",
+++        "find_cpp_toolchain(",
+++    )
+++    ctx.file(cc_proto_support_bzl, cc_proto_support_content)
 ++
-++proto_library(
-++    name = "foo_proto",
-++    srcs = ["foo.proto"],
-++)
-++```""",
+++    # Bazel's ctx.fragments.proto suffix accessors are methods; use fixed defaults.
+++    flags_bzl = "bazel/flags/flags.bzl"
+++    flags_content = ctx.read(flags_bzl)
+++    flags_content = flags_content.replace(
+++        'getattr(ctx.fragments.proto, "cc_proto_library_header_suffixes")',
+++        '[".pb.h"]',
+++    )
+++    flags_content = flags_content.replace(
+++        'getattr(ctx.fragments.proto, "cc_proto_library_source_suffixes")',
+++        '[".pb.cc"]',
+++    )
+++    ctx.file(flags_bzl, flags_content)
+++
+++protobuf_bazel_repo = repository_rule(
+++    implementation = _protobuf_impl,
+++    environ = ["PROTOBUF_BAZEL_DIR"],
 ++    attrs = {
-++        "deps": attr.label_list(
-++            doc = """
-++              The list of `proto_library` rules to generate Python libraries for.
-++
-++              Usually this is just the one target: the proto library of interest.
-++              It can be any target providing `ProtoInfo`.""",
-++            providers = [ProtoInfo],
-++            aspects = [_py_proto_aspect],
-++        ),
+++        "systemlib": attr.label(mandatory = True),
+++        "python_build": attr.label(mandatory = True, allow_single_file = True),
+++        "python_google_build": attr.label(mandatory = True, allow_single_file = True),
+++        "python_google_protobuf_build": attr.label(mandatory = True, allow_single_file = True),
+++        "python_dist_build": attr.label(mandatory = True, allow_single_file = True),
+++        "python_dist_system_python": attr.label(mandatory = True, allow_single_file = True),
 ++    },
-++    provides = [PyInfo],
 ++)
-+diff --git a/tensorflow/compiler/mlir/lite/core/BUILD b/tensorflow/compiler/mlir/lite/core/BUILD
-+index daf69cf2c87..1aadebb27d4 100644
-+--- a/tensorflow/compiler/mlir/lite/core/BUILD
-++++ b/tensorflow/compiler/mlir/lite/core/BUILD
-+@@ -36,7 +36,7 @@ cc_library(
-+         "@com_google_absl//absl/strings",
-+         "@flatbuffers",
-+     ],
-+-    alwayslink = 1,
-++    alwayslink = 0,
-+ )
-+ 
-+ cc_library(
-+diff --git a/tensorflow/lite/core/BUILD b/tensorflow/lite/core/BUILD
-+index e1c669fb757..975e90624db 100644
-+--- a/tensorflow/lite/core/BUILD
-++++ b/tensorflow/lite/core/BUILD
-+@@ -309,7 +309,7 @@ cc_library(
-+         "//tensorflow/lite:stderr_reporter",
-+         "//tensorflow/lite/core/api:error_reporter",
-+     ],
-+-    alwayslink = 1,
-++    alwayslink = 0,
-+ )
-+ 
-+ cc_library(
-+diff --git a/third_party/systemlibs/protobuf.BUILD b/third_party/systemlibs/protobuf.BUILD
-+index c7d940605f9..c69cf7feef0 100644
-+--- a/third_party/systemlibs/protobuf.BUILD
-++++ b/third_party/systemlibs/protobuf.BUILD
-+@@ -1,11 +1,11 @@
-+ load(
-+     "@com_google_protobuf//:protobuf.bzl",
-+-    "cc_proto_library",
-+-    "proto_gen",
-+-    "py_proto_library",
-++    proto_gen = "proto_gen",
-++    py_proto_library = "py_proto_library",
-++    legacy_cc_proto_library = "cc_proto_library",
-+ )
-+ load("@rules_proto//proto:defs.bzl", "proto_library")
-+-
-++load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
-+ licenses(["notice"])
-+ 
-+ filegroup(
-+@@ -59,9 +59,42 @@ genrule(
-+     """,
-+ )
-+ 
++diff --git a/third_party/protobuf_systemlib.BUILD b/third_party/protobuf_systemlib.BUILD
++new file mode 100644
++index 00000000..499ff83c
++--- /dev/null
+++++ b/third_party/protobuf_systemlib.BUILD
++@@ -0,0 +1,188 @@
+++load("@rules_java//java:defs.bzl", "java_library")
+++load("@rules_cc//cc:defs.bzl", "cc_library")
+++load("@rules_python//python:defs.bzl", "py_library")
+++load("//bazel/toolchains:proto_lang_toolchain.bzl", "proto_lang_toolchain")
+++load("//bazel:proto_library.bzl", "proto_library")
+++
+++licenses(["notice"])
+++
+++filegroup(
+++    name = "LICENSE",
+++    visibility = ["//visibility:public"],
+++)
+++
+++alias(
+++    name = "license",
+++    actual = ":LICENSE",
+++    visibility = ["//visibility:public"],
+++)
+++
+++# Map of all well known protos.
+++# name => (include path, imports)
+++WELL_KNOWN_PROTO_MAP = {
+++    "any": ("google/protobuf/any.proto", ["descriptor"]),
+++    "api": (
+++        "google/protobuf/api.proto",
+++        [
+++            "descriptor",
+++            "source_context",
+++            "type",
+++        ],
+++    ),
+++    "compiler_plugin": (
+++        "google/protobuf/compiler/plugin.proto",
+++        ["descriptor"],
+++    ),
+++    "descriptor": ("google/protobuf/descriptor.proto", []),
+++    "duration": ("google/protobuf/duration.proto", ["descriptor"]),
+++    "empty": ("google/protobuf/empty.proto", ["descriptor"]),
+++    "field_mask": ("google/protobuf/field_mask.proto", ["descriptor"]),
+++    "source_context": ("google/protobuf/source_context.proto", ["descriptor"]),
+++    "struct": ("google/protobuf/struct.proto", ["descriptor"]),
+++    "timestamp": ("google/protobuf/timestamp.proto", ["descriptor"]),
+++    "type": (
+++        "google/protobuf/type.proto",
+++        [
+++            "any",
+++            "descriptor",
+++            "source_context",
+++        ],
+++    ),
+++    "wrappers": ("google/protobuf/wrappers.proto", ["descriptor"]),
+++}
+++
+++RELATIVE_WELL_KNOWN_PROTOS = [proto[1][0] for proto in WELL_KNOWN_PROTO_MAP.items()]
+++
 ++genrule(
-++    name = "link_pb_h_files",
-++    outs = [
-++        "google/protobuf/any.pb.h",
-++        "google/protobuf/api.pb.h",
-++        "google/protobuf/duration.pb.h",
-++        "google/protobuf/empty.pb.h",
-++        "google/protobuf/field_mask.pb.h",
-++        "google/protobuf/source_context.pb.h",
-++        "google/protobuf/struct.pb.h",
-++        "google/protobuf/timestamp.pb.h",
-++        "google/protobuf/type.pb.h",
-++        "google/protobuf/wrappers.pb.h",
-++    ],
+++    name = "link_proto_files",
+++    outs = RELATIVE_WELL_KNOWN_PROTOS,
 ++    cmd = """
 ++      for i in $(OUTS); do
 ++        f=$${i#$(@D)/}
@@ -528,58 +396,1381 @@ new file mode 100644
 ++        ln -sf $(PROTOBUF_INCLUDE_PATH)/$$f $(@D)/$$f
 ++      done
 ++    """,
-++    visibility = ["//visibility:public"],
 ++)
 ++
-+ cc_library(
-+     name = "protobuf",
-+     linkopts = ["-lprotobuf"],
-++    hdrs = [":link_pb_h_files"],
-++    includes = ["."],
+++PROTO_LINKOPTS = [
+++    "-lprotobuf",
+++    "-lutf8_range",
+++    "-lutf8_validity",
+++]
+++
+++cc_library(
+++    name = "protobuf",
+++    linkopts = PROTO_LINKOPTS,
 ++    visibility = ["//visibility:public"],
 ++)
 ++
 ++cc_library(
-++    name = "well_known_protos_pb_h",
-++    hdrs = [":link_pb_h_files"],
-++    include_prefix = "",
-+     visibility = ["//visibility:public"],
-+ )
-+ 
-+@@ -85,7 +118,7 @@ genrule(
-+     visibility = ["//visibility:public"],
-+ )
-+ 
-+-cc_proto_library(
-++legacy_cc_proto_library(
-+     name = "cc_wkt_protos",
-+     internal_bootstrap_hack = 1,
-+     protoc = ":protoc",
-+@@ -105,6 +138,27 @@ py_library(
-+     visibility = ["//visibility:public"],
-+ )
-+ 
-++proto_lang_toolchain(
-++    name = "cc_toolchain",
-++    blacklisted_protos = [
-++        "//:compiler_plugin_proto",
-++        "//:descriptor_proto",
-++        "//:any_proto",
-++        "//:api_proto",
-++        "//:duration_proto",
-++        "//:empty_proto",
-++        "//:field_mask_proto",
-++        "//:source_context_proto",
-++        "//:struct_proto",
-++        "//:timestamp_proto",
-++        "//:type_proto",
-++        "//:wrappers_proto",
-++    ],
-++    command_line = "--cpp_out=$(OUT)",
-++    runtime = "//:protobuf",
+++    name = "protobuf_lite",
+++    linkopts = ["-lprotobuf-lite", "-lutf8_range", "-lutf8_validity"],
 ++    visibility = ["//visibility:public"],
 ++)
 ++
+++cc_library(
+++    name = "protobuf_headers",
+++    linkopts = PROTO_LINKOPTS,
+++    visibility = ["//visibility:public"],
+++)
+++
+++cc_library(
+++    name = "protoc_lib",
+++    linkopts = ["-lprotoc"] + PROTO_LINKOPTS,
+++    visibility = ["//visibility:public"],
+++)
+++
+++LIB_ALIASES = ["type_resolver", "differencer", "json_util", "delimited_message_util", "field_mask_util", "arena"]
+++
+++[alias(
+++    name = _alias,
+++    actual = "protobuf",
+++    visibility = ["//visibility:public"],
+++) for _alias in LIB_ALIASES]
+++
+++genrule(
+++    name = "protoc",
+++    outs = ["protoc.bin"],
+++    cmd = "ln -s $(PREFIX)/bin/protoc $@",
+++    executable = 1,
+++    visibility = ["//visibility:public"],
+++)
+++
+++cc_library(
+++    name = "cc_wkt_protos",
+++    linkopts = PROTO_LINKOPTS,
+++    visibility = ["//visibility:public"],
+++)
+++
+++java_library(
+++    name = "protobuf_java",
+++    exports = ["@maven_protobuf//:original_com_google_protobuf_protobuf_java"],
+++    visibility = ["//visibility:public"],
+++)
+++
+++java_library(
+++    name = "protobuf_java_util",
+++    exports = ["@maven_protobuf//:original_com_google_protobuf_protobuf_java_util"],
+++    visibility = ["//visibility:public"],
+++)
+++
+++py_library(
+++    name = "protobuf_python",
+++    srcs_version = "PY3",
+++    visibility = ["//visibility:public"],
+++)
+++
+++py_library(
+++    name = "python_srcs",
+++    srcs_version = "PY3",
+++    visibility = ["//visibility:public"],
+++)
+++
+++filegroup(
+++    name = "protobuf_python_genproto",
+++    srcs = [],
+++    visibility = ["//visibility:public"],
+++)
+++
+++filegroup(
+++    name = "well_known_protos",
+++    srcs = [],
+++    visibility = ["//visibility:public"],
+++)
+++
+++proto_lang_toolchain(
+++    name = "cc_toolchain",
+++    blacklisted_protos = [proto + "_proto" for proto in WELL_KNOWN_PROTO_MAP.keys()],
+++    command_line = "--cpp_out=$(OUT)",
+++    runtime = ":protobuf",
+++    visibility = ["//visibility:public"],
+++)
+++
+++proto_lang_toolchain(
+++    name = "java_toolchain",
+++    command_line = "--java_out=$(OUT)",
+++    runtime = ":protobuf_java",
+++    visibility = ["//visibility:public"],
+++)
+++
+++[proto_library(
+++    name = proto[0] + "_proto",
+++    srcs = [proto[1][0]],
+++    visibility = ["//visibility:public"],
+++    deps = [dep + "_proto" for dep in proto[1][1]],
+++) for proto in WELL_KNOWN_PROTO_MAP.items()]
+++
+++[cc_library(
+++    name = proto[0],
+++    linkopts = PROTO_LINKOPTS,
+++    visibility = ["//visibility:public"],
+++) for proto in WELL_KNOWN_PROTO_MAP.items()]
+++
+++[cc_library(
+++    name = proto[0] + "_cc_proto",
+++    linkopts = PROTO_LINKOPTS,
+++    visibility = ["//visibility:public"],
+++) for proto in WELL_KNOWN_PROTO_MAP.items()]
++diff --git a/third_party/py/python_init_rules.bzl b/third_party/py/python_init_rules.bzl
++index 84370d1d..4f62c669 100644
++--- a/third_party/py/python_init_rules.bzl
+++++ b/third_party/py/python_init_rules.bzl
++@@ -1,6 +1,7 @@
++ """Hermetic Python initialization. Consult the WORKSPACE on how to use it."""
++ 
++ load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
+++load("//third_party:protobuf_impl.bzl", "protobuf_bazel_repo")
++ 
++ def python_init_rules(extra_patches = []):
++     """Defines (doesn't setup) the rules_python repository.
++@@ -20,16 +21,14 @@ def python_init_rules(extra_patches = []):
++         ],
++     )
++ 
++-    tf_http_archive(
+++    protobuf_bazel_repo(
++         name = "com_google_protobuf",
++-        patch_file = ["@xla//third_party/protobuf:protobuf.patch"],
++-        sha256 = "6e09bbc950ba60c3a7b30280210cd285af8d7d8ed5e0a6ed101c72aff22e8d88",
++-        strip_prefix = "protobuf-6.31.1",
++-        urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.zip"),
++-        repo_mapping = {
++-            "@abseil-cpp": "@com_google_absl",
++-            "@protobuf_pip_deps": "@pypi",
++-        },
+++        systemlib = "@org_tensorflow//third_party:protobuf_systemlib.BUILD",
+++        python_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.BUILD",
+++        python_google_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.BUILD",
+++        python_google_protobuf_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.protobuf.BUILD",
+++        python_dist_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.BUILD",
+++        python_dist_system_python = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.system_python.bzl",
++     )
++ 
++     tf_http_archive(
++diff --git a/third_party/systemlibs/BUILD.bazel b/third_party/systemlibs/BUILD.bazel
++index e69de29b..dd9765e5 100644
++--- a/third_party/systemlibs/BUILD.bazel
+++++ b/third_party/systemlibs/BUILD.bazel
++@@ -0,0 +1,19 @@
+++package(default_visibility = ["//visibility:public"])
+++
+++exports_files([
+++    "protobuf.BUILD",
+++    "protobuf.bzl",
+++    "protobuf_deps.bzl",
+++    "protobuf.bazel.BUILD",
+++    "protobuf.bazel.cc_proto_library.bzl",
+++    "protobuf.bazel.py_proto_library.bzl",
+++    "protobuf.bazel.proto_library.bzl",
+++    "protobuf.bazel.java_proto_library.bzl",
+++    "protobuf.bazel.java_lite_proto_library.bzl",
+++    "protobuf.python.BUILD",
+++    "protobuf.python.dist.BUILD",
+++    "protobuf.python.dist.system_python.bzl",
+++    "protobuf.python.google.BUILD",
+++    "protobuf.python.google.protobuf.BUILD",
+++    "protobuf.src.google.protobuf.io.BUILD",
+++])
++diff --git a/third_party/systemlibs/grpc.BUILD b/third_party/systemlibs/grpc.BUILD
++index 0e4e862c..32891d07 100644
++--- a/third_party/systemlibs/grpc.BUILD
+++++ b/third_party/systemlibs/grpc.BUILD
++@@ -10,6 +10,7 @@ cc_library(
++     linkopts = [
++         "-lgrpc",
++         "-lgpr",
+++        "-labsl_synchronization",
++     ],
++     visibility = ["//visibility:public"],
++ )
++@@ -19,6 +20,7 @@ cc_library(
++     linkopts = [
++         "-lgrpc++",
++         "-lgpr",
+++        "-labsl_synchronization",
++     ],
++     visibility = ["//visibility:public"],
++ )
++@@ -33,6 +35,7 @@ cc_library(
++     linkopts = [
++         "-lgrpc_unsecure",
++         "-lgpr",
+++        "-labsl_synchronization",
++     ],
++     visibility = ["//visibility:public"],
++ )
++@@ -42,6 +45,7 @@ cc_library(
++     linkopts = [
++         "-lgrpc++_unsecure",
++         "-lgpr",
+++        "-labsl_synchronization",
++     ],
++     visibility = ["//visibility:public"],
++ )
++@@ -49,7 +53,7 @@ cc_library(
++ genrule(
++     name = "ln_grpc_cpp_plugin",
++     outs = ["grpc_cpp_plugin.bin"],
++-    cmd = "ln -s $$(which grpc_cpp_plugin) $@",
+++    cmd = "ln -s $(PREFIX)/bin/grpc_cpp_plugin $@",
++ )
++ 
++ sh_binary(
++diff --git a/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl b/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
++index 83c2382a..a51db226 100644
++--- a/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
+++++ b/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
++@@ -13,6 +13,7 @@ def cc_grpc_library(
++         generate_mocks = False,
++         use_external = False,
++         grpc_only = False,
+++        plugin_flags = [],
++         **kwargs):
++     """Generates C++ grpc classes for services defined in a proto file.
++ 
++@@ -46,6 +47,9 @@ def cc_grpc_library(
++         grpc_only (bool): if True, generate only grpc library, expecting
++           protobuf messages library (cc_proto_library target) to be passed as
++           deps. False by default (will become True by default eventually).
+++        plugin_flags (list): Flags to pass to the gRPC C++ plugin.
+++          For example, ["services_namespace=grpc"] to place generated
+++          services in a grpc:: namespace. Empty list by default.
++         **kwargs: rest of arguments, e.g., compatible_with and visibility
++     """
++     if len(srcs) > 1:
++@@ -92,6 +96,7 @@ def cc_grpc_library(
++             plugin = "@com_github_grpc_grpc//src/compiler:grpc_cpp_plugin",
++             well_known_protos = well_known_protos,
++             generate_mocks = generate_mocks,
+++            flags = plugin_flags,
++             **kwargs
++         )
++         cc_library(
++diff --git a/third_party/systemlibs/grpc.bazel.generate_cc.bzl b/third_party/systemlibs/grpc.bazel.generate_cc.bzl
++index f396b1f8..0faf4c0a 100644
++--- a/third_party/systemlibs/grpc.bazel.generate_cc.bzl
+++++ b/third_party/systemlibs/grpc.bazel.generate_cc.bzl
++@@ -11,7 +11,7 @@ load(
++     "get_proto_root",
++     "proto_path_to_generated_filename",
++ )
++-load("@rules_proto//proto:defs.bzl", "ProtoInfo")
+++load("@com_google_protobuf//bazel/common:proto_info.bzl", "ProtoInfo")
++ 
++ _GRPC_PROTO_HEADER_FMT = "{}.grpc.pb.h"
++ _GRPC_PROTO_SRC_FMT = "{}.grpc.pb.cc"
++diff --git a/third_party/systemlibs/grpc.bazel.protobuf.bzl b/third_party/systemlibs/grpc.bazel.protobuf.bzl
++index 9eeb4cb4..08812209 100644
++--- a/third_party/systemlibs/grpc.bazel.protobuf.bzl
+++++ b/third_party/systemlibs/grpc.bazel.protobuf.bzl
++@@ -1,6 +1,6 @@
++ """Utility functions for generating protobuf code."""
++ 
++-load("@rules_proto//proto:defs.bzl", "ProtoInfo")
+++load("@com_google_protobuf//bazel/common:proto_info.bzl", "ProtoInfo")
++ 
++ _PROTO_EXTENSION = ".proto"
++ _VIRTUAL_IMPORTS = "/_virtual_imports/"
++diff --git a/third_party/systemlibs/grpc.bazel.python_rules.bzl b/third_party/systemlibs/grpc.bazel.python_rules.bzl
++new file mode 100644
++index 00000000..d430b67c
++--- /dev/null
+++++ b/third_party/systemlibs/grpc.bazel.python_rules.bzl
++@@ -0,0 +1,55 @@
+++"""Python gRPC rules for system libraries."""
+++
+++load("@rules_python//python:py_library.bzl", "py_library")
+++
+++def py_grpc_library(
+++        name,
+++        srcs,
+++        deps = [],
+++        testonly = None,
+++        compatible_with = None,
+++        visibility = None,
+++        **kwargs):
+++    """Minimal py_grpc_library for system gRPC.
+++    
+++    When using system gRPC, the actual Python gRPC stubs come from
+++    the grpcio package. This rule creates stub targets to satisfy
+++    the build graph without actually generating code.
+++    
+++    Args:
+++        name: Name of the rule.
+++        srcs: proto_library targets (not used, for compatibility).
+++        deps: Dependencies, typically py_proto_library targets.
+++        testonly: Whether this is test-only.
+++        compatible_with: Compatibility constraints.
+++        visibility: Target visibility.
+++        **kwargs: Additional arguments.
+++    """
+++    
+++    # Create a dummy Python file to satisfy Bazel's requirement
+++    # that py_library must have source files
+++    stub_file = name + "_grpc_stub.py"
+++    
+++    native.genrule(
+++        name = name + "_gen_stub",
+++        outs = [stub_file],
+++        cmd = """
+++cat > $@ << 'EOF'
+++# This is a stub file for system gRPC.
+++# The actual gRPC Python bindings come from the system grpcio package.
+++# This file exists only to satisfy Bazel's build requirements.
+++EOF
+++""",
+++        testonly = testonly,
+++        visibility = ["//visibility:private"],
+++    )
+++    
+++    py_library(
+++        name = name,
+++        srcs = [stub_file],
+++        deps = deps,
+++        testonly = testonly,
+++        compatible_with = compatible_with,
+++        visibility = visibility,
+++        **kwargs
+++    )
++\ No newline at end of file
++diff --git a/third_party/systemlibs/protobuf.BUILD b/third_party/systemlibs/protobuf.BUILD
++index c7d94060..96479f75 100644
++--- a/third_party/systemlibs/protobuf.BUILD
+++++ b/third_party/systemlibs/protobuf.BUILD
++@@ -1,33 +1,16 @@
++-load(
++-    "@com_google_protobuf//:protobuf.bzl",
++-    "cc_proto_library",
++-    "proto_gen",
++-    "py_proto_library",
++-)
++-load("@rules_proto//proto:defs.bzl", "proto_library")
++-
++ licenses(["notice"])
++ 
+++package(default_visibility = ["//visibility:public"])
+++
++ filegroup(
++     name = "LICENSE",
++-    visibility = ["//visibility:public"],
++ )
++ 
++ # Map of all well known protos.
++-# name => (include path, imports)
++ WELL_KNOWN_PROTO_MAP = {
++     "any": ("google/protobuf/any.proto", []),
++-    "api": (
++-        "google/protobuf/api.proto",
++-        [
++-            "source_context",
++-            "type",
++-        ],
++-    ),
++-    "compiler_plugin": (
++-        "google/protobuf/compiler/plugin.proto",
++-        ["descriptor"],
++-    ),
+++    "api": ("google/protobuf/api.proto", ["source_context", "type"]),
+++    "compiler_plugin": ("google/protobuf/compiler/plugin.proto", ["descriptor"]),
++     "descriptor": ("google/protobuf/descriptor.proto", []),
++     "duration": ("google/protobuf/duration.proto", []),
++     "empty": ("google/protobuf/empty.proto", []),
++@@ -35,13 +18,7 @@ WELL_KNOWN_PROTO_MAP = {
++     "source_context": ("google/protobuf/source_context.proto", []),
++     "struct": ("google/protobuf/struct.proto", []),
++     "timestamp": ("google/protobuf/timestamp.proto", []),
++-    "type": (
++-        "google/protobuf/type.proto",
++-        [
++-            "any",
++-            "source_context",
++-        ],
++-    ),
+++    "type": ("google/protobuf/type.proto", ["any", "source_context"]),
++     "wrappers": ("google/protobuf/wrappers.proto", []),
++ }
++ 
++@@ -62,52 +39,88 @@ genrule(
++ cc_library(
++     name = "protobuf",
++     linkopts = ["-lprotobuf"],
++-    visibility = ["//visibility:public"],
+++)
+++
+++cc_library(
+++    name = "protobuf_lite",
+++    linkopts = ["-lprotobuf-lite"],
++ )
++ 
++ cc_library(
++     name = "protobuf_headers",
++     linkopts = ["-lprotobuf"],
++-    visibility = ["//visibility:public"],
++ )
++ 
++ cc_library(
++     name = "protoc_lib",
++     linkopts = ["-lprotoc"],
++-    visibility = ["//visibility:public"],
++ )
++ 
++ genrule(
++     name = "protoc",
++     outs = ["protoc.bin"],
++-    cmd = "ln -s $$(which protoc) $@",
+++    cmd = "ln -s $(PREFIX)/bin/protoc $@",
++     executable = 1,
++-    visibility = ["//visibility:public"],
++-)
++-
++-cc_proto_library(
++-    name = "cc_wkt_protos",
++-    internal_bootstrap_hack = 1,
++-    protoc = ":protoc",
++-    visibility = ["//visibility:public"],
++ )
++ 
++-proto_gen(
++-    name = "protobuf_python_genproto",
++-    includes = ["."],
++-    protoc = "@com_google_protobuf//:protoc",
++-    visibility = ["//visibility:public"],
+++py_library(
+++    name = "protobuf_python",
+++    srcs_version = "PY3",
++ )
++ 
++ py_library(
++-    name = "protobuf_python",
+++    name = "python_srcs",
++     srcs_version = "PY3",
++-    visibility = ["//visibility:public"],
+++)
+++
+++cc_library(
+++    name = "cc_wkt_protos",
+++    linkopts = ["-lprotobuf"],
+++)
+++
+++filegroup(
+++    name = "protobuf_python_genproto",
+++    srcs = [],
++ )
++ 
 + [proto_library(
 +     name = proto[0] + "_proto",
 +     srcs = [proto[1][0]],
++-    visibility = ["//visibility:public"],
++     deps = [dep + "_proto" for dep in proto[1][1]],
++ ) for proto in WELL_KNOWN_PROTO_MAP.items()]
+++
+++# Well-known type cc_library aliases
+++cc_library(name = "any", linkopts = ["-lprotobuf"])
+++cc_library(name = "any_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "duration", linkopts = ["-lprotobuf"])
+++cc_library(name = "duration_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "timestamp", linkopts = ["-lprotobuf"])
+++cc_library(name = "timestamp_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "empty", linkopts = ["-lprotobuf"])
+++cc_library(name = "empty_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "struct", linkopts = ["-lprotobuf"])
+++cc_library(name = "struct_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "wrappers", linkopts = ["-lprotobuf"])
+++cc_library(name = "wrappers_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "descriptor", linkopts = ["-lprotobuf"])
+++cc_library(name = "descriptor_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "field_mask", linkopts = ["-lprotobuf"])
+++cc_library(name = "field_mask_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "api", linkopts = ["-lprotobuf"])
+++cc_library(name = "api_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "type", linkopts = ["-lprotobuf"])
+++cc_library(name = "type_cc_proto", linkopts = ["-lprotobuf"])
+++cc_library(name = "source_context", linkopts = ["-lprotobuf"])
+++cc_library(name = "source_context_cc_proto", linkopts = ["-lprotobuf"])
+++
+++# Utility targets needed by TSL/XLA
+++cc_library(name = "type_resolver", linkopts = ["-lprotobuf"])
+++cc_library(name = "differencer", linkopts = ["-lprotobuf"])
+++cc_library(name = "json_util", linkopts = ["-lprotobuf"])
+++cc_library(name = "delimited_message_util", linkopts = ["-lprotobuf"])
+++cc_library(name = "field_mask_util", linkopts = ["-lprotobuf"])
+++
+++filegroup(
+++    name = "well_known_protos",
+++    srcs = [],
+++)
++diff --git a/third_party/systemlibs/protobuf.bazel.BUILD b/third_party/systemlibs/protobuf.bazel.BUILD
++new file mode 100644
++index 00000000..f2ebd180
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.BUILD
++@@ -0,0 +1,10 @@
+++# Stub BUILD file for protobuf bazel/ directory
+++# Used when TF_SYSTEM_LIBS=com_google_protobuf
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++exports_files([
+++    "cc_proto_library.bzl",
+++    "py_proto_library.bzl",
+++    "proto_library.bzl",
+++])
++diff --git a/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl
++new file mode 100644
++index 00000000..87302566
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.cc_proto_library.bzl
++@@ -0,0 +1,262 @@
+++"""cc_proto_library for TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++This implementation uses a Bazel ASPECT to properly handle transitive proto
+++dependencies. The aspect propagates along proto_library deps, generates
+++C++ code for each proto, AND compiles it into an object file. Each proto_library
+++only compiles its OWN direct sources - transitive deps are handled by linking
+++against the CcInfo from dependent proto_libraries.
+++
+++This avoids "multiple definition" linker errors that occur when transitive
+++proto sources are compiled multiple times.
+++"""
+++
+++load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain", "use_cpp_toolchain")
+++
+++def _cc_proto_aspect_impl(target, ctx):
+++    """Aspect that generates AND compiles C++ code for each proto_library.
+++    
+++    Each invocation handles ONE proto_library - compiling only its direct
+++    sources. Transitive dependencies are satisfied via CcInfo from deps.
+++    """
+++    
+++    # Only process targets with ProtoInfo
+++    if ProtoInfo not in target:
+++        return []
+++    
+++    proto_info = target[ProtoInfo]
+++    direct_sources = proto_info.direct_sources
+++    
+++    # Collect CcInfo from deps (other proto_libraries that also have this aspect)
+++    dep_cc_infos = []
+++    if hasattr(ctx.rule.attr, "deps"):
+++        for dep in ctx.rule.attr.deps:
+++            if CcInfo in dep:
+++                dep_cc_infos.append(dep[CcInfo])
+++    
+++    # Skip @com_google_protobuf - well-known types come from system protobuf
+++    if ctx.label.workspace_name == "com_google_protobuf":
+++        # Return protobuf runtime CcInfo so deps can compile against it
+++        if CcInfo in ctx.attr._protobuf_runtime:
+++            return [ctx.attr._protobuf_runtime[CcInfo]]
+++        return [CcInfo()]
+++    
+++    # Aggregate target (no direct sources) - just merge dep CcInfo
+++    if not direct_sources:
+++        all_cc_infos = dep_cc_infos[:]
+++        if CcInfo in ctx.attr._protobuf_runtime:
+++            all_cc_infos.append(ctx.attr._protobuf_runtime[CcInfo])
+++        if all_cc_infos:
+++            return [cc_common.merge_cc_infos(cc_infos = all_cc_infos)]
+++        return [CcInfo()]
+++    
+++    # === Generate C++ code ===
+++    
+++    hdr_outs = []
+++    cc_outs = []
+++    for src in direct_sources:
+++        basename = src.basename.replace(".proto", "")
+++        hdr_outs.append(ctx.actions.declare_file(basename + ".pb.h"))
+++        cc_outs.append(ctx.actions.declare_file(basename + ".pb.cc"))
+++    
+++    all_outs = hdr_outs + cc_outs
+++    
+++    # Get the proto source root
+++    proto_source_root = ""
+++    if hasattr(proto_info, "proto_source_root") and proto_info.proto_source_root:
+++        proto_source_root = proto_info.proto_source_root
+++    
+++    # Build protoc arguments
+++    args = ctx.actions.args()
+++    
+++    if proto_source_root and proto_source_root != ".":
+++        args.add("--cpp_out=" + ctx.bin_dir.path + "/" + proto_source_root)
+++    else:
+++        args.add("--cpp_out=" + ctx.bin_dir.path)
+++    
+++    # Add include paths for import resolution
+++    seen_paths = {}
+++    
+++    if proto_source_root and proto_source_root != ".":
+++        args.add("-I" + proto_source_root)
+++        seen_paths[proto_source_root] = True
+++    
+++    if "." not in seen_paths:
+++        args.add("-I.")
+++        seen_paths["."] = True
+++    
+++    if hasattr(proto_info, "transitive_proto_path"):
+++        for path in proto_info.transitive_proto_path.to_list():
+++            if path and path not in seen_paths:
+++                args.add("-I" + path)
+++                seen_paths[path] = True
+++    
+++    if ctx.bin_dir.path not in seen_paths:
+++        args.add("-I" + ctx.bin_dir.path)
+++        seen_paths[ctx.bin_dir.path] = True
+++    
+++    # Add proto files
+++    for src in direct_sources:
+++        if proto_source_root and proto_source_root != "." and src.path.startswith(proto_source_root + "/"):
+++            relative_path = src.path[len(proto_source_root) + 1:]
+++            args.add(relative_path)
+++        else:
+++            args.add(src.path)
+++    
+++    # Collect all transitive proto sources as inputs (for import resolution)
+++    all_proto_inputs = depset(
+++        direct = direct_sources,
+++        transitive = [proto_info.transitive_sources] if hasattr(proto_info, "transitive_sources") else [],
+++    )
+++    
+++    # Run protoc
+++    ctx.actions.run(
+++        inputs = all_proto_inputs,
+++        outputs = all_outs,
+++        executable = ctx.executable._protoc,
+++        arguments = [args],
+++        mnemonic = "CcProtoGen",
+++        use_default_shell_env = True,
+++    )
+++    
+++    # === Compile the generated code ===
+++    
+++    cc_toolchain = find_cpp_toolchain(ctx)
+++    feature_configuration = cc_common.configure_features(
+++        ctx = ctx,
+++        cc_toolchain = cc_toolchain,
+++        requested_features = ctx.features,
+++        unsupported_features = ctx.disabled_features,
+++    )
+++    
+++    # Build include paths
+++    include_paths = [ctx.bin_dir.path]
+++    if hdr_outs:
+++        include_paths.append(hdr_outs[0].dirname)
+++    
+++    # Add paths for external repo headers
+++    if hasattr(proto_info, "transitive_proto_path"):
+++        for path in proto_info.transitive_proto_path.to_list():
+++            if path and path.startswith("external/"):
+++                bin_path = ctx.bin_dir.path + "/" + path
+++                if bin_path not in include_paths:
+++                    include_paths.append(bin_path)
+++    
+++    # Gather compilation contexts from dependencies
+++    compilation_contexts = []
+++    
+++    # Add protobuf runtime headers
+++    if CcInfo in ctx.attr._protobuf_runtime:
+++        compilation_contexts.append(ctx.attr._protobuf_runtime[CcInfo].compilation_context)
+++    
+++    # Add dep proto_libraries' headers
+++    for cc_info in dep_cc_infos:
+++        compilation_contexts.append(cc_info.compilation_context)
+++    
+++    # Compile ONLY our direct sources (not transitive!)
+++    # cc_common.compile returns (CcCompilationContext, CcCompilationOutputs)
+++    new_compilation_context, compilation_outputs = cc_common.compile(
+++        name = ctx.label.name + "_pb",
+++        actions = ctx.actions,
+++        feature_configuration = feature_configuration,
+++        cc_toolchain = cc_toolchain,
+++        srcs = cc_outs,
+++        public_hdrs = hdr_outs,
+++        compilation_contexts = compilation_contexts,
+++        includes = include_paths,
+++        user_compile_flags = ["-w"],  # Suppress warnings in generated code
+++    )
+++    
+++    # Create linking context
+++    # Include deps' linking contexts so transitive symbols are available
+++    linking_contexts = []
+++    for cc_info in dep_cc_infos:
+++        if cc_info.linking_context:
+++            linking_contexts.append(cc_info.linking_context)
+++    
+++    # Include protobuf runtime for linking
+++    if CcInfo in ctx.attr._protobuf_runtime:
+++        runtime_linking = ctx.attr._protobuf_runtime[CcInfo].linking_context
+++        if runtime_linking:
+++            linking_contexts.append(runtime_linking)
+++    
+++    linking_context, linking_outputs = cc_common.create_linking_context_from_compilation_outputs(
+++        actions = ctx.actions,
+++        feature_configuration = feature_configuration,
+++        cc_toolchain = cc_toolchain,
+++        compilation_outputs = compilation_outputs,
+++        name = ctx.label.name + "_pb",
+++        linking_contexts = linking_contexts,
+++    )
+++    
+++    # Merge our compilation context with deps for downstream users
+++    all_compilation_contexts = [new_compilation_context] + compilation_contexts
+++    merged_compilation_context = cc_common.merge_compilation_contexts(
+++        compilation_contexts = all_compilation_contexts,
+++    )
+++    
+++    return [CcInfo(
+++        compilation_context = merged_compilation_context,
+++        linking_context = linking_context,
+++    )]
+++
+++
+++# Define the aspect
+++_cc_proto_aspect = aspect(
+++    implementation = _cc_proto_aspect_impl,
+++    attr_aspects = ["deps"],  # Propagate along proto_library deps
+++    attrs = {
+++        "_protoc": attr.label(
+++            default = "@com_google_protobuf//:protoc",
+++            executable = True,
+++            cfg = "exec",
+++        ),
+++        "_protobuf_runtime": attr.label(
+++            default = "@com_google_protobuf//:protobuf",
+++        ),
+++        "_cc_toolchain": attr.label(
+++            default = "@bazel_tools//tools/cpp:current_cc_toolchain",
+++        ),
+++    },
+++    provides = [CcInfo],
+++    toolchains = use_cpp_toolchain(),
+++    fragments = ["cpp"],
+++)
+++
+++
+++def _cc_proto_library_impl(ctx):
+++    """Implementation of cc_proto_library.
+++    
+++    Simply collects and merges CcInfo from the proto_library deps
+++    (which have CcInfo via the aspect).
+++    """
+++    
+++    cc_infos = []
+++    all_files = []
+++    
+++    for dep in ctx.attr.deps:
+++        if CcInfo in dep:
+++            cc_infos.append(dep[CcInfo])
+++        if DefaultInfo in dep:
+++            all_files.append(dep[DefaultInfo].files)
+++    
+++    if cc_infos:
+++        merged_cc_info = cc_common.merge_cc_infos(cc_infos = cc_infos)
+++    else:
+++        merged_cc_info = CcInfo()
+++    
+++    return [
+++        DefaultInfo(files = depset(transitive = all_files)),
+++        merged_cc_info,
+++    ]
+++
+++
+++cc_proto_library = rule(
+++    implementation = _cc_proto_library_impl,
+++    attrs = {
+++        "deps": attr.label_list(
+++            providers = [ProtoInfo],
+++            aspects = [_cc_proto_aspect],
+++        ),
+++    },
+++    provides = [CcInfo],
+++)
++diff --git a/third_party/systemlibs/protobuf.bazel.java_lite_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.java_lite_proto_library.bzl
++new file mode 100644
++index 00000000..48ba4ae0
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.java_lite_proto_library.bzl
++@@ -0,0 +1,11 @@
+++"""Stub java_lite_proto_library.bzl for TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++Provides a no-op java_lite_proto_library macro since Java protos are not
+++needed for the TensorFlow conda build.
+++"""
+++
+++def java_lite_proto_library(name, **kwargs):
+++    native.filegroup(
+++        name = name,
+++        visibility = kwargs.get("visibility", ["//visibility:public"]),
+++    )
++diff --git a/third_party/systemlibs/protobuf.bazel.java_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.java_proto_library.bzl
++new file mode 100644
++index 00000000..523113d1
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.java_proto_library.bzl
++@@ -0,0 +1,11 @@
+++"""Stub java_proto_library.bzl for TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++Provides a no-op java_proto_library macro since Java protos are not
+++needed for the TensorFlow conda build.
+++"""
+++
+++def java_proto_library(name, **kwargs):
+++    native.filegroup(
+++        name = name,
+++        visibility = kwargs.get("visibility", ["//visibility:public"]),
+++    )
++diff --git a/third_party/systemlibs/protobuf.bazel.proto_library.bzl b/third_party/systemlibs/protobuf.bazel.proto_library.bzl
++new file mode 100644
++index 00000000..1d9ea7a0
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.proto_library.bzl
++@@ -0,0 +1,9 @@
+++"""Stub proto_library.bzl for TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++Re-exports the native proto_library rule.
+++"""
+++
+++# Re-export the native proto_library from rules_proto
+++load("@rules_proto//proto:defs.bzl", _proto_library = "proto_library")
+++
+++proto_library = _proto_library
++diff --git a/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl b/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl
++new file mode 100644
++index 00000000..d00b6567
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.bazel.py_proto_library.bzl
++@@ -0,0 +1,193 @@
+++"""py_proto_library for TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++This implementation uses a Bazel ASPECT to properly handle transitive proto
+++dependencies. The aspect propagates along proto_library deps and generates
+++Python code for each proto, collecting PyInfo transitively.
+++"""
+++
+++# Provider to pass generated proto info through the aspect
+++PyProtoGenInfo = provider(
+++    "Provider for generated Python proto files",
+++    fields = {
+++        "sources": "depset of generated _pb2.py files",
+++        "imports": "depset of import paths",
+++    },
+++)
+++
+++def _py_proto_aspect_impl(target, ctx):
+++    """Aspect implementation that generates Python code for each proto_library."""
+++    
+++    # Only process targets with ProtoInfo
+++    if ProtoInfo not in target:
+++        return []
+++    
+++    # Skip @com_google_protobuf - well-known types come from system protobuf
+++    if ctx.label.workspace_name == "com_google_protobuf":
+++        # Return empty info - well-known types are provided by system protobuf
+++        return [PyProtoGenInfo(
+++            sources = depset(),
+++            imports = depset([ctx.bin_dir.path]),
+++        )]
+++    
+++    proto_info = target[ProtoInfo]
+++    direct_sources = proto_info.direct_sources
+++    
+++    # Collect PyProtoGenInfo from deps (transitive proto deps that also have this aspect)
+++    transitive_py_sources = []
+++    transitive_imports = []
+++    
+++    if hasattr(ctx.rule.attr, "deps"):
+++        for dep in ctx.rule.attr.deps:
+++            if PyProtoGenInfo in dep:
+++                info = dep[PyProtoGenInfo]
+++                transitive_py_sources.append(info.sources)
+++                transitive_imports.append(info.imports)
+++    
+++    # Build import paths
+++    import_paths = [ctx.bin_dir.path, "."]
+++    
+++    # If no direct sources (aggregate target), just pass through transitive info
+++    if not direct_sources:
+++        return [PyProtoGenInfo(
+++            sources = depset(transitive = transitive_py_sources),
+++            imports = depset(import_paths, transitive = transitive_imports),
+++        )]
+++    
+++    # Declare output files for this proto_library's direct sources
+++    py_outs = []
+++    
+++    for src in direct_sources:
+++        # Use basename only - declare_file() creates paths relative to the target's package
+++        basename = src.basename.replace(".proto", "_pb2.py")
+++        py_outs.append(ctx.actions.declare_file(basename))
+++    
+++    # Get the proto source root for this proto_library
+++    proto_source_root = ""
+++    if hasattr(proto_info, "proto_source_root") and proto_info.proto_source_root:
+++        proto_source_root = proto_info.proto_source_root
+++    
+++    # Build protoc arguments
+++    args = ctx.actions.args()
+++    
+++    # Set output directory - need to account for proto source root
+++    if proto_source_root and proto_source_root != ".":
+++        args.add("--python_out=" + ctx.bin_dir.path + "/" + proto_source_root)
+++    else:
+++        args.add("--python_out=" + ctx.bin_dir.path)
+++    
+++    # Add include paths for import resolution
+++    seen_paths = {}
+++    
+++    # Add proto source root first (most specific)
+++    if proto_source_root and proto_source_root != ".":
+++        args.add("-I" + proto_source_root)
+++        seen_paths[proto_source_root] = True
+++    
+++    # Add current directory
+++    if "." not in seen_paths:
+++        args.add("-I.")
+++        seen_paths["."] = True
+++    
+++    # Add transitive proto paths
+++    if hasattr(proto_info, "transitive_proto_path"):
+++        for path in proto_info.transitive_proto_path.to_list():
+++            if path and path not in seen_paths:
+++                args.add("-I" + path)
+++                seen_paths[path] = True
+++    
+++    # Add bin_dir for already-generated protos
+++    if ctx.bin_dir.path not in seen_paths:
+++        args.add("-I" + ctx.bin_dir.path)
+++        seen_paths[ctx.bin_dir.path] = True
+++    
+++    # Add proto files - use path relative to proto_source_root if applicable
+++    for src in direct_sources:
+++        if proto_source_root and proto_source_root != "." and src.path.startswith(proto_source_root + "/"):
+++            relative_path = src.path[len(proto_source_root) + 1:]
+++            args.add(relative_path)
+++        else:
+++            args.add(src.path)
+++    
+++    # Collect all transitive proto sources as inputs (for import resolution)
+++    all_proto_inputs = depset(
+++        direct = direct_sources,
+++        transitive = [proto_info.transitive_sources] if hasattr(proto_info, "transitive_sources") else [],
+++    )
+++    
+++    # Run protoc
+++    ctx.actions.run(
+++        inputs = all_proto_inputs,
+++        outputs = py_outs,
+++        executable = ctx.executable._protoc,
+++        arguments = [args],
+++        mnemonic = "PyProtoAspect",
+++        use_default_shell_env = True,
+++    )
+++    
+++    return [PyProtoGenInfo(
+++        sources = depset(py_outs, transitive = transitive_py_sources),
+++        imports = depset(import_paths, transitive = transitive_imports),
+++    )]
+++
+++# Define the aspect
+++_py_proto_aspect = aspect(
+++    implementation = _py_proto_aspect_impl,
+++    attr_aspects = ["deps"],  # Propagate along proto_library deps
+++    attrs = {
+++        "_protoc": attr.label(
+++            default = "@com_google_protobuf//:protoc",
+++            executable = True,
+++            cfg = "exec",
+++        ),
+++    },
+++    provides = [PyProtoGenInfo],
+++)
+++
+++def _py_proto_library_impl(ctx):
+++    """Implementation of py_proto_library using aspect results."""
+++    
+++    # Collect results from the aspect applied to our deps
+++    all_sources = []
+++    all_imports = []
+++    
+++    for dep in ctx.attr.deps:
+++        if PyProtoGenInfo in dep:
+++            info = dep[PyProtoGenInfo]
+++            all_sources.append(info.sources)
+++            all_imports.append(info.imports)
+++    
+++    sources = depset(transitive = all_sources)
+++    imports = depset(transitive = all_imports)
+++    
+++    # If no sources were generated (all aggregate targets), create a placeholder
+++    sources_list = sources.to_list()
+++    if not sources_list:
+++        init_file = ctx.actions.declare_file("__init__.py")
+++        ctx.actions.write(
+++            output = init_file,
+++            content = "# Generated placeholder for aggregate proto_library\n",
+++        )
+++        sources = depset([init_file])
+++        sources_list = [init_file]
+++    
+++    return [
+++        DefaultInfo(
+++            files = sources,
+++            runfiles = ctx.runfiles(files = sources_list),
+++        ),
+++        PyInfo(
+++            transitive_sources = sources,
+++            imports = imports,
+++        ),
+++    ]
+++
+++py_proto_library = rule(
+++    implementation = _py_proto_library_impl,
+++    attrs = {
+++        "deps": attr.label_list(
+++            providers = [ProtoInfo],
+++            aspects = [_py_proto_aspect],  # Apply aspect to deps
+++        ),
+++    },
+++    provides = [PyInfo],
+++)
++diff --git a/third_party/systemlibs/protobuf.python.BUILD b/third_party/systemlibs/protobuf.python.BUILD
++new file mode 100644
++index 00000000..88d4bb21
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.python.BUILD
++@@ -0,0 +1,30 @@
+++# Stub BUILD file for protobuf python/ directory
+++# Used when TF_SYSTEM_LIBS=com_google_protobuf
+++
+++load("//bazel/toolchains:proto_lang_toolchain.bzl", "proto_lang_toolchain")
+++load("@rules_python//python:defs.bzl", "py_library")
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++py_library(
+++    name = "python",
+++    srcs_version = "PY3",
+++)
+++
+++alias(
+++    name = "protobuf_python",
+++    actual = "//:protobuf_python",
+++)
+++
+++proto_lang_toolchain(
+++    name = "python_toolchain",
+++    command_line = "--python_out=%s",
+++    progress_message = "Generating Python proto_library %{label}",
+++    runtime = ":protobuf_python",
+++    visibility = ["//visibility:public"],
+++)
+++
+++alias(
+++    name = "proto_api",
+++    actual = "//python/google/protobuf:proto_api",
+++)
++diff --git a/third_party/systemlibs/protobuf.python.dist.BUILD b/third_party/systemlibs/protobuf.python.dist.BUILD
++new file mode 100644
++index 00000000..7abb970f
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.python.dist.BUILD
++@@ -0,0 +1,8 @@
+++# Stub BUILD file for protobuf python/dist directory
+++# Used when TF_SYSTEM_LIBS=com_google_protobuf
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++exports_files([
+++    "system_python.bzl",
+++])
++diff --git a/third_party/systemlibs/protobuf.python.dist.system_python.bzl b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
++new file mode 100644
++index 00000000..1822ae9b
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
++@@ -0,0 +1,36 @@
+++"""Stub for system_python.bzl when using TF_SYSTEM_LIBS=com_google_protobuf.
+++
+++This provides the system_python repository rule that protobuf's BUILD files expect,
+++but since we're using system-installed protobuf, we just need a minimal stub.
+++"""
+++
+++def _system_python_impl(repository_ctx):
+++    # Create a minimal BUILD file for the system_python repository
+++    repository_ctx.file("BUILD.bazel", """
+++# Stub BUILD file for system_python repository
+++# This is used when TF_SYSTEM_LIBS=com_google_protobuf
+++load("@bazel_skylib//lib:selects.bzl", "selects")
+++load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++alias(
+++    name = "python_headers",
+++    actual = "@rules_python//python/cc:current_py_cc_headers",
+++)
+++
+++string_flag(
+++    name = "python_version",
+++    build_setting_default = "system",
+++)
+++
+++# Config settings for Python version selection
+++config_setting(
+++    name = "none",
+++    flag_values = {":python_version": "system"},
+++)
+++""")
+++
+++system_python = repository_rule(
+++    implementation = _system_python_impl,
+++)
++diff --git a/third_party/systemlibs/protobuf.python.google.BUILD b/third_party/systemlibs/protobuf.python.google.BUILD
++new file mode 100644
++index 00000000..5646b85e
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.python.google.BUILD
++@@ -0,0 +1,4 @@
+++# Stub BUILD file for protobuf python/google/ directory
+++# Used when TF_SYSTEM_LIBS=com_google_protobuf
+++
+++package(default_visibility = ["//visibility:public"])
++diff --git a/third_party/systemlibs/protobuf.python.google.protobuf.BUILD b/third_party/systemlibs/protobuf.python.google.protobuf.BUILD
++new file mode 100644
++index 00000000..679e4a02
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.python.google.protobuf.BUILD
++@@ -0,0 +1,35 @@
+++# Stub BUILD file for protobuf python/google/protobuf/ directory
+++# Used when TF_SYSTEM_LIBS=com_google_protobuf
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++# proto_api provides the C API for Python/protobuf integration
+++# For system protobuf, we need to include the system header
+++# The pybind11_protobuf code does: #include "python/google/protobuf/proto_api.h"
+++# We need this header to be found at that path relative to the repo root
+++
+++# Create a forwarding header that includes the system proto_api.h
+++genrule(
+++    name = "proto_api_header",
+++    outs = ["proto_api.h"],
+++    cmd = """
+++cat > $@ << 'EOF'
+++// Forwarding header for system protobuf proto_api.h
+++// This header is generated for TF_SYSTEM_LIBS=com_google_protobuf
+++#include <google/protobuf/proto_api.h>
+++EOF
+++    """,
+++)
+++
+++cc_library(
+++    name = "proto_api",
+++    hdrs = [":proto_api_header"],
+++    # Include path set so that "python/google/protobuf/proto_api.h" resolves correctly
+++    # from the protobuf repo root
+++    strip_include_prefix = "",
+++    include_prefix = "python/google/protobuf",
+++    deps = [
+++        "//:protobuf",
+++        "@rules_python//python/cc:current_py_cc_headers",
+++    ],
+++)
++diff --git a/third_party/systemlibs/protobuf.src.google.protobuf.io.BUILD b/third_party/systemlibs/protobuf.src.google.protobuf.io.BUILD
++new file mode 100644
++index 00000000..c7b613f4
++--- /dev/null
+++++ b/third_party/systemlibs/protobuf.src.google.protobuf.io.BUILD
++@@ -0,0 +1,13 @@
+++"""Stub BUILD for @com_google_protobuf//src/google/protobuf/io when using system protobuf."""
+++
+++package(default_visibility = ["//visibility:public"])
+++
+++cc_library(
+++    name = "io",
+++    linkopts = ["-lprotobuf"],
+++)
+++
+++cc_library(
+++    name = "tokenizer",
+++    linkopts = ["-lprotobuf"],
+++)
++diff --git a/third_party/systemlibs/pybind11.BUILD b/third_party/systemlibs/pybind11.BUILD
++index f633074f..68800711 100644
++--- a/third_party/systemlibs/pybind11.BUILD
+++++ b/third_party/systemlibs/pybind11.BUILD
++@@ -3,6 +3,17 @@ package(default_visibility = ["//visibility:public"])
++ cc_library(
++     name = "pybind11",
++     deps = [
++-        "@xla@xla//third_party/python_runtime:headers",
+++        "@xla//third_party/python_runtime:headers",
++     ],
++ )
+++
+++# Needed by pybind11_bazel.
+++config_setting(
+++    name = "osx",
+++    constraint_values = ["@platforms//os:osx"],
+++)
+++
+++config_setting(
+++    name = "msvc_compiler",
+++    flag_values = {"@bazel_tools//tools/cpp:compiler": "msvc-cl"},
+++)
++diff --git a/third_party/xla/third_party/py/python_init_rules.bzl b/third_party/xla/third_party/py/python_init_rules.bzl
++index 84370d1d..ad030157 100644
++--- a/third_party/xla/third_party/py/python_init_rules.bzl
+++++ b/third_party/xla/third_party/py/python_init_rules.bzl
++@@ -1,6 +1,7 @@
++ """Hermetic Python initialization. Consult the WORKSPACE on how to use it."""
++ 
++ load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
+++load("@org_tensorflow//third_party:protobuf_impl.bzl", "protobuf_bazel_repo")
++ 
++ def python_init_rules(extra_patches = []):
++     """Defines (doesn't setup) the rules_python repository.
++@@ -20,16 +21,14 @@ def python_init_rules(extra_patches = []):
++         ],
++     )
++ 
++-    tf_http_archive(
+++    protobuf_bazel_repo(
++         name = "com_google_protobuf",
++-        patch_file = ["@xla//third_party/protobuf:protobuf.patch"],
++-        sha256 = "6e09bbc950ba60c3a7b30280210cd285af8d7d8ed5e0a6ed101c72aff22e8d88",
++-        strip_prefix = "protobuf-6.31.1",
++-        urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.zip"),
++-        repo_mapping = {
++-            "@abseil-cpp": "@com_google_absl",
++-            "@protobuf_pip_deps": "@pypi",
++-        },
+++        systemlib = "@org_tensorflow//third_party:protobuf_systemlib.BUILD",
+++        python_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.BUILD",
+++        python_google_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.BUILD",
+++        python_google_protobuf_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.protobuf.BUILD",
+++        python_dist_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.BUILD",
+++        python_dist_system_python = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.system_python.bzl",
++     )
++ 
++     tf_http_archive(
++diff --git a/third_party/xla/workspace2.bzl b/third_party/xla/workspace2.bzl
++index 3f9041ed..67607c0c 100644
++--- a/third_party/xla/workspace2.bzl
+++++ b/third_party/xla/workspace2.bzl
++@@ -8,6 +8,7 @@ load("@io_bazel_rules_closure//closure:defs.bzl", "filegroup_external")
++ load("@rules_ml_toolchain//gpu/sycl:sycl_configure.bzl", "sycl_configure")
++ load("@rules_ml_toolchain//gpu/sycl:sycl_init_repository.bzl", "sycl_init_repository")
++ load("//third_party:repo.bzl", "tf_http_archive", "tf_mirror_urls")
+++load("@org_tensorflow//third_party:protobuf_impl.bzl", "protobuf_bazel_repo")
++ load("//third_party/absl:workspace.bzl", absl = "repo")
++ load("//third_party/benchmark:workspace.bzl", benchmark = "repo")
++ load("//third_party/brotli:workspace.bzl", brotli = "repo")
++@@ -299,16 +300,14 @@ def _tf_repositories():
++ 
++     # `com_google_protobuf` is initialized in `python_init_rules()`.
++     maybe(
++-        tf_http_archive,
+++        protobuf_bazel_repo,
++         name = "com_google_protobuf",
++-        patch_file = ["//third_party/protobuf:protobuf.patch"],
++-        sha256 = "6e09bbc950ba60c3a7b30280210cd285af8d7d8ed5e0a6ed101c72aff22e8d88",
++-        strip_prefix = "protobuf-6.31.1",
++-        urls = tf_mirror_urls("https://github.com/protocolbuffers/protobuf/archive/refs/tags/v6.31.1.zip"),
++-        repo_mapping = {
++-            "@abseil-cpp": "@com_google_absl",
++-            "@protobuf_pip_deps": "@pypi",
++-        },
+++        systemlib = "@org_tensorflow//third_party:protobuf_systemlib.BUILD",
+++        python_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.BUILD",
+++        python_google_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.BUILD",
+++        python_google_protobuf_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.protobuf.BUILD",
+++        python_dist_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.BUILD",
+++        python_dist_system_python = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.system_python.bzl",
++     )
++ 
++     tf_http_archive(
++@@ -372,6 +371,16 @@ def _tf_repositories():
++         sha256 = "dd6a2fa311ba8441bbefd2764c55b99136ff10f7ea42954be96006a2723d33fc",
++         strip_prefix = "grpc-1.74.0",
++         patch_file = ["//third_party/grpc:grpc.patch"],
+++        system_link_files = {
+++            "@tsl//third_party/systemlibs:BUILD.bazel": "bazel/BUILD",
+++            "@tsl//third_party/systemlibs:grpc.BUILD": "src/compiler/BUILD",
+++            "@tsl//third_party/systemlibs:grpc.bazel.grpc_deps.bzl": "bazel/grpc_deps.bzl",
+++            "@tsl//third_party/systemlibs:grpc.bazel.grpc_extra_deps.bzl": "bazel/grpc_extra_deps.bzl",
+++            "@tsl//third_party/systemlibs:grpc.bazel.cc_grpc_library.bzl": "bazel/cc_grpc_library.bzl",
+++            "@tsl//third_party/systemlibs:grpc.bazel.generate_cc.bzl": "bazel/generate_cc.bzl",
+++            "@tsl//third_party/systemlibs:grpc.bazel.protobuf.bzl": "bazel/protobuf.bzl",
+++            "@tsl//third_party/systemlibs:grpc.bazel.python_rules.bzl": "bazel/python_rules.bzl",
+++        },
++         urls = tf_mirror_urls("https://github.com/grpc/grpc/archive/refs/tags/v1.74.0.tar.gz"),
++     )
++ 
++@@ -495,6 +504,10 @@ def _tf_repositories():
++         urls = tf_mirror_urls("https://github.com/pybind/pybind11_protobuf/archive/f02a2b7653bc50eb5119d125842a3870db95d251.zip"),
++         sha256 = "3cf7bf0f23954c5ce6c37f0a215f506efa3035ca06e3b390d67f4cbe684dce23",
++         strip_prefix = "pybind11_protobuf-f02a2b7653bc50eb5119d125842a3870db95d251",
+++        patch_file = [
+++            "//third_party/pybind11_protobuf:0001-make-proto_cast_util-visible.patch",
+++            "//third_party/pybind11_protobuf:0002-protobuf7-descriptor-database-string-view.patch",
+++        ],
++     )
++ 
++     java_import_external(
++diff --git a/third_party/xla/third_party/llvm/workspace.bzl b/third_party/xla/third_party/llvm/workspace.bzl
++--- a/third_party/xla/third_party/llvm/workspace.bzl
+++++ b/third_party/xla/third_party/llvm/workspace.bzl
++@@ -5,7 +5,12 @@ load("//third_party:repo.bzl", "tf_http_archive")
++ def repo(name):
++     """Imports LLVM."""
++     LLVM_COMMIT = "909041e4802c4b9a2223ca04099f35bf1dbbd460"
++-    LLVM_SHA256 = "3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a"
+++    # GitHub's codeload serves this commit archive re-compressed over time, so
+++    # no single sha256 is stable.  Integrity is enforced by the recipe's own
+++    # fetch (build.sh), which verifies one of the two known-good content
+++    # hashes (the variants are byte-identical trees; only gzip framing
+++    # differs) and hands the archive to Bazel via --distdir.
+++    LLVM_SHA256 = ""
++ 
++     tf_http_archive(
++         name = name,
++diff --git a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
++--- a/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
+++++ b/third_party/xla/third_party/tsl/tsl/platform/protobuf_util.cc
++@@ -34,7 +34,7 @@ std::string LegacyUnredactedDebugString(const tsl::protobuf::Message& message) {
++   tsl::protobuf::TextFormat::Printer printer;
++   printer.SetExpandAny(true);
++ 
++-  printer.PrintToString(message, &debug_string);
+++  (void)printer.PrintToString(message, &debug_string);
++   return debug_string;
++ }
++ 
++@@ -50,7 +50,7 @@ std::string LegacyUnredactedShortDebugString(
++   printer.SetSingleLineMode(true);
++   printer.SetExpandAny(true);
++ 
++-  printer.PrintToString(message, &debug_string);
+++  (void)printer.PrintToString(message, &debug_string);
++   if (!debug_string.empty() && debug_string.back() == ' ') {
++     debug_string.pop_back();
++   }
++diff --git a/tensorflow/core/platform/tensor_coding.cc b/tensorflow/core/platform/tensor_coding.cc
++--- a/tensorflow/core/platform/tensor_coding.cc
+++++ b/tensorflow/core/platform/tensor_coding.cc
++@@ -92,7 +92,7 @@ class StringListEncoderImpl : public StringListEncoder {
++   void Append(const protobuf::MessageLite& m) override {
++     core::PutVarint32(out_, m.ByteSizeLong());
++     tensorflow::string serialized_message;
++-    m.AppendToString(&serialized_message);
+++    (void)m.AppendToString(&serialized_message);
++     absl::StrAppend(&rest_, serialized_message);
++   }
++ 

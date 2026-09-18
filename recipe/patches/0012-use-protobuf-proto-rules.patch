@@ -1,0 +1,45 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Anaconda Recipes <recipe-maintainers@anaconda.com>
+Date: Thu, 17 Sep 2026 10:00:00 -0600
+Subject: [PATCH] Use protobuf's proto rules in kernels and sentencepiece BUILD
+
+The OSS export relies on Bazel's builtin proto rules, whose cc_proto_aspect
+requires the toolchain target to provide the builtin ProtoLangToolchainInfo.
+@com_google_protobuf//:cc_toolchain comes from protobuf-bazel-rules and
+provides protobuf's own provider, so analysis failed with
+"rule 'proto_lang_toolchain' does not contain declared provider
+'ProtoLangToolchainInfo'" for tensorflow_text/core/kernels:edit_changes_proto
+and then for com_google_sentencepiece's proto targets.
+
+Load protobuf's rules in both BUILD files, as upstream does internally, so
+producer and consumer use the same provider.
+---
+ tensorflow_text/core/kernels/BUILD | 4 ++--
+ third_party/sentencepiece/BUILD    | 3 ++-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/tensorflow_text/core/kernels/BUILD b/tensorflow_text/core/kernels/BUILD
+--- a/tensorflow_text/core/kernels/BUILD
++++ b/tensorflow_text/core/kernels/BUILD
+@@ -4,9 +4,9 @@ load("@flatbuffers//:build_defs.bzl", "flatbuffer_cc_library")
+ load("@rules_cc//cc:cc_library.bzl", "cc_library")
+ load("@rules_cc//cc:cc_test.bzl", "cc_test")
+ 
+-# Placeholder: load proto_library
++load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
+ load("//tensorflow_text:tftext.bzl", "tf_cc_library", "tflite_cc_library")
+-# [internal] load cc_proto_library.bzl
++load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+ 
+ licenses(["notice"])
+ 
+diff --git a/third_party/sentencepiece/BUILD b/third_party/sentencepiece/BUILD
+--- a/third_party/sentencepiece/BUILD
++++ b/third_party/sentencepiece/BUILD
+@@ -1,4 +1,5 @@
+-# [internal] load cc_proto_library.bzl
++load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
++load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+ 
+ package(
+     default_visibility = ["//visibility:public"],
