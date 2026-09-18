@@ -22,15 +22,22 @@ fi
 # the archive Bazel fetches for LLVM does not match TF's pin.  Fetch the
 # canonical archive here and hand it to Bazel via --distdir.
 mkdir -p "${SRC_DIR}/llvm-distdir"
-LLVM_SHA="3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a"
 LLVM_URL="https://github.com/llvm/llvm-project/archive/909041e4802c4b9a2223ca04099f35bf1dbbd460.tar.gz"
 LLVM_TARBALL="${SRC_DIR}/llvm-distdir/$(basename "${LLVM_URL}")"
+# GitHub's codeload re-compresses commit archives over time, so the archive
+# bytes alternate between two known-good variants (verified byte-identical
+# trees; only gzip framing differs).  Bazel's own downloader also sees the
+# re-compressed variant, so the LLVM sha256 pin in the TF archive is cleared
+# (see protobuf_systemlib.patch) and integrity is enforced here instead.
+#   canonical:   3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a
+#   recompressed: 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248
+KNOWN_LLVM_SHA256="3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
 if [[ ! -f "${LLVM_TARBALL}" ]]; then
   curl -L --retry 3 -o "${LLVM_TARBALL}" "${LLVM_URL}"
 fi
 LLVM_GOT="$( (sha256sum 2>/dev/null || shasum -a 256) < "${LLVM_TARBALL}" | awk '{print $1}')"
-if [[ "${LLVM_GOT}" != "${LLVM_SHA}" ]]; then
-  echo "LLVM archive sha256 mismatch: got ${LLVM_GOT}, expected ${LLVM_SHA}" >&2
+if [[ " ${KNOWN_LLVM_SHA256} " != *" ${LLVM_GOT} "* ]]; then
+  echo "LLVM archive sha256 mismatch: got ${LLVM_GOT}, expected one of: ${KNOWN_LLVM_SHA256}" >&2
   exit 1
 fi
 echo "build --distdir=${SRC_DIR}/llvm-distdir" >> .bazelrc.user
