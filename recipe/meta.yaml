@@ -75,7 +75,6 @@ requirements:
     - libabseil {{ libabseil }}
     - libprotobuf {{ libprotobuf }}
     - libgrpc {{ libgrpc }}
-    - icu {{ icu }}
     - protobuf-bazel-rules {{ libprotobuf.split('.', 1)[1] }}
     - libzlib {{ libzlib }}  # [linux]
   run:
@@ -83,7 +82,6 @@ requirements:
     - tensorflow >=2.21.0,<2.22
     - _tflow_select * {{ tensorflow_flavor }}
     - libabseil {{ libabseil }}
-    - icu {{ icu }}
     - libzlib {{ libzlib }}  # [linux]
   run_constrained:
     - tensorflow-datasets >=3.2.0

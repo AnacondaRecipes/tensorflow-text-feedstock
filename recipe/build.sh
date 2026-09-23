@@ -7,7 +7,7 @@ export PATH=$PREFIX/bin:$PATH
 
 # Tell Bazel to use conda-provided system abseil (critical for ABI compatibility)
 TF_PATH=$(python -c "import tensorflow as tf; import os; print(os.path.dirname(tf.__file__))")
-export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf,com_github_grpc_grpc,icu"
+export TF_SYSTEM_LIBS="com_google_absl,com_google_protobuf,com_github_grpc_grpc"
 export SYSTEM_LIBS_PREFIX="${PREFIX}"
 
 if [[ "${target_platform}" == osx-* ]]; then
@@ -17,18 +17,19 @@ if [[ "${target_platform}" == osx-* ]]; then
   export SDKROOT=${CONDA_BUILD_SYSROOT}
 fi
 
-# GitHub's CDN serves commit archives re-compressed when the client sends
-# Accept-Encoding: identity (which Bazel's downloader does), so the sha256 of
-# the archive Bazel fetches for LLVM does not match TF's pin.  Fetch the
-# canonical archive here and hand it to Bazel via --distdir.
+# GitHub's codeload serves commit archives re-compressed over time, so the
+# sha256 of the LLVM archive Bazel downloads (with Accept-Encoding: identity)
+# does not match TF's upstream pin.  Fetch the re-compressed variant, verify
+# it here, and hand it to Bazel via --distdir; the sha256 pin in the TF
+# archive is set to this variant (see protobuf_systemlib.patch) so Bazel
+# verifies the distdir copy instead of re-downloading.
 mkdir -p "${SRC_DIR}/llvm-distdir"
 LLVM_URL="https://github.com/llvm/llvm-project/archive/909041e4802c4b9a2223ca04099f35bf1dbbd460.tar.gz"
 LLVM_TARBALL="${SRC_DIR}/llvm-distdir/$(basename "${LLVM_URL}")"
-# GitHub's codeload re-compresses commit archives over time, so the archive
-# bytes alternate between two known-good variants (verified byte-identical
-# trees; only gzip framing differs).  Bazel's own downloader also sees the
-# re-compressed variant, so the LLVM sha256 pin in the TF archive is cleared
-# (see protobuf_systemlib.patch) and integrity is enforced here instead.
+# GitHub's codeload re-compresses commit archives over time; the re-compressed
+# variant is what Bazel's downloader receives, and the sha256 pin in the TF
+# archive is set to it (see protobuf_systemlib.patch) so Bazel verifies the
+# archive it fetches (or the distdir copy).
 #   canonical:   3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a
 #   recompressed: 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248
 KNOWN_LLVM_SHA256="3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
@@ -64,9 +65,9 @@ build --repo_env=GRPC_BAZEL_DIR=${PREFIX}/share/bazel/grpc/bazel
 build --repo_env=PROTOBUF_BAZEL_DIR=${PREFIX}/share/bazel/protobuf/bazel
 
 # Use system abseil and protobuf instead of vendored version (critical for ABI compatibility)
-build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc,icu
-build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc,icu
-build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc,icu
+build --repo_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
+build --action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
+build --host_action_env=TF_SYSTEM_LIBS=com_google_absl,com_google_protobuf,com_github_grpc_grpc
 
 # Use system tensorflow
 build --override_repository=pypi_tensorflow=${TF_PATH}
@@ -117,3 +118,6 @@ rm -f oss_scripts/pip_package/tensorflow_build_info.py.bak
 ./oss_scripts/run_build.sh
 
 $PYTHON -m pip install tensorflow_text-*.whl -vv --no-deps --no-build-isolation
+# Remove the staged TF proto headers: they are build-only and would
+# otherwise ship ~216 MiB of headers in the package.
+rm -rf "${PREFIX}/include/tf_proto_include"

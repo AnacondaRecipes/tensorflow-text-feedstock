@@ -1727,17 +1727,16 @@ index 0000000..21eb316
 +diff --git a/third_party/xla/third_party/llvm/workspace.bzl b/third_party/xla/third_party/llvm/workspace.bzl
 +--- a/third_party/xla/third_party/llvm/workspace.bzl
 ++++ b/third_party/xla/third_party/llvm/workspace.bzl
-+@@ -5,7 +5,12 @@ load("//third_party:repo.bzl", "tf_http_archive")
++@@ -5,7 +5,11 @@ load("//third_party:repo.bzl", "tf_http_archive")
 + def repo(name):
 +     """Imports LLVM."""
 +     LLVM_COMMIT = "909041e4802c4b9a2223ca04099f35bf1dbbd460"
 +-    LLVM_SHA256 = "3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a"
-++    # GitHub's codeload serves this commit archive re-compressed over time, so
-++    # no single sha256 is stable.  Integrity is enforced by the recipe's own
-++    # fetch (build.sh), which verifies one of the two known-good content
-++    # hashes (the variants are byte-identical trees; only gzip framing
-++    # differs) and hands the archive to Bazel via --distdir.
-++    LLVM_SHA256 = ""
+++    # GitHub's codeload re-compresses commit archives over time; the
+++    # re-compressed variant (00b1077e...) is what Bazel's downloader
+++    # receives, so pin it here to make Bazel verify the fetched archive
+++    # (and the --distdir copy provided by build.sh).
+++    LLVM_SHA256 = "00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
 + 
 +     tf_http_archive(
 +         name = name,
