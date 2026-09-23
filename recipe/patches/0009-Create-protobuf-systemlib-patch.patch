@@ -30,7 +30,7 @@ new file mode 100644
 index 0000000..21eb316
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,1743 @@
+@@ -0,0 +1,1742 @@
 +diff --git a/.bazelrc b/.bazelrc
 +index 92e73998..f5e23bc9 100644
 +--- a/.bazelrc
