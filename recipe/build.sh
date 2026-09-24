@@ -17,31 +17,23 @@ if [[ "${target_platform}" == osx-* ]]; then
   export SDKROOT=${CONDA_BUILD_SYSROOT}
 fi
 
-# GitHub's codeload serves commit archives re-compressed over time, so the
-# sha256 of the LLVM archive Bazel downloads (with Accept-Encoding: identity)
-# does not match TF's upstream pin.  Fetch the re-compressed variant, verify
-# it here, and hand it to Bazel via --distdir; the sha256 pin in the TF
-# archive is set to this variant (see protobuf_systemlib.patch) so Bazel
-# verifies the distdir copy instead of re-downloading.
-mkdir -p "${SRC_DIR}/llvm-distdir"
-LLVM_URL="https://github.com/llvm/llvm-project/archive/909041e4802c4b9a2223ca04099f35bf1dbbd460.tar.gz"
-LLVM_TARBALL="${SRC_DIR}/llvm-distdir/$(basename "${LLVM_URL}")"
-# GitHub's codeload re-compresses commit archives over time; the re-compressed
-# variant is what Bazel's downloader receives, and the sha256 pin in the TF
-# archive is set to it (see protobuf_systemlib.patch) so Bazel verifies the
-# archive it fetches (or the distdir copy).
-#   canonical:   3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a
-#   recompressed: 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248
-KNOWN_LLVM_SHA256="3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
-if [[ ! -f "${LLVM_TARBALL}" ]]; then
-  curl -L --retry 3 -o "${LLVM_TARBALL}" "${LLVM_URL}"
-fi
-LLVM_GOT="$( (sha256sum 2>/dev/null || shasum -a 256) < "${LLVM_TARBALL}" | awk '{print $1}')"
-if [[ " ${KNOWN_LLVM_SHA256} " != *" ${LLVM_GOT} "* ]]; then
-  echo "LLVM archive sha256 mismatch: got ${LLVM_GOT}, expected one of: ${KNOWN_LLVM_SHA256}" >&2
-  exit 1
-fi
-echo "build --distdir=${SRC_DIR}/llvm-distdir" >> .bazelrc.user
+# TF's WORKSPACE load()s @llvm-raw//utils/bazel:configure.bzl even though
+# tensorflow-text builds no LLVM/MLIR targets. Stub the repo so Bazel is
+# satisfied without downloading ~260 MB of LLVM.
+LLVM_STUB="${SRC_DIR}/llvm-raw-stub"
+mkdir -p "${LLVM_STUB}/utils/bazel"
+touch "${LLVM_STUB}/WORKSPACE" "${LLVM_STUB}/BUILD.bazel" "${LLVM_STUB}/utils/bazel/BUILD.bazel"
+cat > "${LLVM_STUB}/utils/bazel/configure.bzl" <<'EOF'
+def _llvm_configure_stub(rctx):
+    rctx.file("WORKSPACE", "")
+    rctx.file("BUILD.bazel", "")
+
+llvm_configure = repository_rule(
+    implementation = _llvm_configure_stub,
+    attrs = {"targets": attr.string_list()},
+)
+EOF
+echo "build --override_repository=llvm-raw=${LLVM_STUB}" >> .bazelrc.user
 
 # Generated TF proto headers come from the installed tensorflow package
 # (proto codegen is skipped for TF-archived protos - see protobuf_systemlib.patch).
@@ -87,6 +79,9 @@ build --host_linkopt=-lz
 # Fix memchr not declared in re2 with newer gcc
 build --per_file_copt=external/com_googlesource_code_re2/.*@-include,cstring
 build --host_per_file_copt=external/com_googlesource_code_re2/.*@-include,cstring
+# protobuf >=34 marks PrintToString/AppendToString/ParseFromString [[nodiscard]];
+# TF's downloaded .bazelrc (common:linux) promotes that to an error. Keep it a warning.
+common:linux --copt=-Wno-error=unused-result
 
 EOF
 

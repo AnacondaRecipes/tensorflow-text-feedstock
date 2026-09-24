@@ -1,22 +1,46 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Anaconda Recipes <recipe-maintainers@anaconda.com>
-Date: Thu, 17 Sep 2026 10:00:00 -0600
-Subject: [PATCH] Provide ICU's data entry point from the bundled data
+From 94e3dcbb217414c3d31fe787c53f8a21f75368fd Mon Sep 17 00:00:00 2001
+From: Raviteja Gorijala <36429068+rtg0795@users.noreply.github.com>
+Date: Thu, 3 Sep 2026 20:47:19 +0000
+Subject: [PATCH] Fix ICU Unicode normalization data symbol name and link
+ configuration in TF-Text
 
-tensorflow-text builds ICU 77 from source (its own WORKSPACE pin) but does
-not build ICU's data library, so ICU's udata.cpp reference to
-U_ICUDATA_ENTRY_POINT (icudt77_dat) is unresolved at runtime and importing
-tensorflow_text fails with:
+Backport of tensorflow/text@94e3dcbb (#1548), adapted to v2.21.0
+(stubdata headers were already absent from BUILD.bzl on this tag).
 
-  symbol not found in flat namespace '_icudt77_dat'
-
-The bundled filtered data file defines only the static-style name
-(icudt77l_dat).  Rename it to the shared-library entry point name so the
-linked-in (filtered) data satisfies ICU's lookup.
+PiperOrigin-RevId: 972217013
 ---
+ third_party/icu/BUILD.bzl                 | 1 -
+ third_party/icu/data/BUILD                | 6 +++---
  third_party/icu/data/normalization_data.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ 3 files changed, 5 insertions(+), 6 deletions(-)
 
+diff --git a/third_party/icu/BUILD.bzl b/third_party/icu/BUILD.bzl
+--- a/third_party/icu/BUILD.bzl
++++ b/third_party/icu/BUILD.bzl
+@@ -50,7 +50,6 @@ cc_library(
+         [
+             "icu4c/source/common/*.c",
+             "icu4c/source/common/*.cpp",
+-            "icu4c/source/stubdata/*.cpp",
+         ],
+     ),
+     hdrs = glob([
+diff --git a/third_party/icu/data/BUILD b/third_party/icu/data/BUILD
+--- a/third_party/icu/data/BUILD
++++ b/third_party/icu/data/BUILD
+@@ -23,9 +23,9 @@ exports_files(["LICENSE"])
+ #   $ ICU_DATA_FILTER_FILE=filters.json ./runConfigureICU Linux
+ #   $ make clean && make
+ #   $ cd data/out/tmp
+-#   $ genccode icudt64l.dat
+-#   $ echo 'U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt64l_dat.bytes; }' >> icudt64l_dat.c
+-# This creates icudt64l_dat.c which you can rename and move in here.
++#   $ genccode -e icudt77 icudt77l.dat
++#   $ echo 'U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt77_dat.bytes; }' >> icudt77_dat.c
++# This creates icudt77_dat.c which you can rename to normalization_data.c and move in here.
+ cc_library(
+     name = "icu_normalization_data",
+     srcs = ["normalization_data.c"],
 diff --git a/third_party/icu/data/normalization_data.c b/third_party/icu/data/normalization_data.c
 --- a/third_party/icu/data/normalization_data.c
 +++ b/third_party/icu/data/normalization_data.c

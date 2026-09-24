@@ -26,12 +26,8 @@ source:
     - patches/0011-exclude-tflite_registrar-module.patch
     # Use protobuf's proto rules so the toolchain provider matches
     - patches/0012-use-protobuf-proto-rules.patch
-    # protobuf 7 marks ParseFromString [[nodiscard]]
-    - patches/0013-silence-protobuf7-nodiscard.patch
-    # Provide ICU's data entry point from the bundled filtered data
+    # Backport tensorflow/text@94e3dcbb — ICU data symbol + drop stubdata
     - patches/0014-icu-data-entry-point.patch
-    # Drop -Werror=unused-result from the TF .bazelrc that configure.sh downloads
-    - patches/0015-drop-unused-result-werror.patch
 
 build:
   number: 0
