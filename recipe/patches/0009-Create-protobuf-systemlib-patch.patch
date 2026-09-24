@@ -8,13 +8,13 @@ the Bazel build. Replaces the vendored protobuf download with a
 jaxlib-style repo from conda's protobuf-bazel-rules package, plus the
 systemlib BUILD files protobuf-bazel-rules and system grpc need.
 
-Does not patch the TF archive's .bazelrc or WORKSPACE: Bazel never
-evaluates those for a downloaded repo. proto_bazel_features is registered
-from tensorflow-text's WORKSPACE (patch 0007).
+Does not touch the TF archive's .bazelrc or WORKSPACE: Bazel never reads
+those for a downloaded repo. proto_bazel_features is registered from
+tensorflow-text's WORKSPACE (patch 0007).
 ---
  third_party/tensorflow/BUILD                    |    2 +-
- third_party/tensorflow/protobuf_systemlib.patch |  896 +
- 2 files changed, 897 insertions(+), 1 deletion(-)
+ third_party/tensorflow/protobuf_systemlib.patch | 1015 +
+ 2 files changed, 1016 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
 index 5c63f95..f2aa6ef 100644
@@ -31,9 +31,9 @@ new file mode 100644
 index 0000000..21eb316
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,896 @@
+@@ -0,0 +1,1015 @@
 +diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
-+index 94151996..b686a06c 100644
++index 9415199..b686a06 100644
 +--- a/tensorflow/workspace2.bzl
 ++++ b/tensorflow/workspace2.bzl
 +@@ -48,6 +48,7 @@ load("@xla//tools/toolchains/embedded/arm-linux:arm_linux_toolchain_configure.bz
@@ -86,7 +86,7 @@ index 0000000..21eb316
 +     )
 + 
 +diff --git a/tensorflow/workspace3.bzl b/tensorflow/workspace3.bzl
-+index 2f724422..ed1d8185 100644
++index 2f72442..ed1d818 100644
 +--- a/tensorflow/workspace3.bzl
 ++++ b/tensorflow/workspace3.bzl
 +@@ -21,12 +21,20 @@ def workspace():
@@ -128,7 +128,7 @@ index 0000000..21eb316
 + 
 +diff --git a/third_party/protobuf_bazel_init.bzl b/third_party/protobuf_bazel_init.bzl
 +new file mode 100644
-+index 00000000..eb0568e3
++index 0000000..eb0568e
 +--- /dev/null
 ++++ b/third_party/protobuf_bazel_init.bzl
 +@@ -0,0 +1,10 @@
@@ -144,7 +144,7 @@ index 0000000..21eb316
 ++        system_python(name = "system_python")
 +diff --git a/third_party/protobuf_impl.bzl b/third_party/protobuf_impl.bzl
 +new file mode 100644
-+index 00000000..e636420a
++index 0000000..e636420
 +--- /dev/null
 ++++ b/third_party/protobuf_impl.bzl
 +@@ -0,0 +1,126 @@
@@ -276,7 +276,7 @@ index 0000000..21eb316
 ++)
 +diff --git a/third_party/protobuf_systemlib.BUILD b/third_party/protobuf_systemlib.BUILD
 +new file mode 100644
-+index 00000000..499ff83c
++index 0000000..499ff83
 +--- /dev/null
 ++++ b/third_party/protobuf_systemlib.BUILD
 +@@ -0,0 +1,188 @@
@@ -469,7 +469,7 @@ index 0000000..21eb316
 ++    visibility = ["//visibility:public"],
 ++) for proto in WELL_KNOWN_PROTO_MAP.items()]
 +diff --git a/third_party/py/python_init_rules.bzl b/third_party/py/python_init_rules.bzl
-+index 84370d1d..4f62c669 100644
++index 84370d1..4f62c66 100644
 +--- a/third_party/py/python_init_rules.bzl
 ++++ b/third_party/py/python_init_rules.bzl
 +@@ -1,6 +1,7 @@
@@ -505,7 +505,7 @@ index 0000000..21eb316
 + 
 +     tf_http_archive(
 +diff --git a/third_party/systemlibs/BUILD.bazel b/third_party/systemlibs/BUILD.bazel
-+index e69de29b..21a10107 100644
++index e69de29..21a1010 100644
 +--- a/third_party/systemlibs/BUILD.bazel
 ++++ b/third_party/systemlibs/BUILD.bazel
 +@@ -0,0 +1,14 @@
@@ -524,7 +524,7 @@ index 0000000..21eb316
 ++    "protobuf.python.google.protobuf.BUILD",
 ++])
 +diff --git a/third_party/systemlibs/grpc.BUILD b/third_party/systemlibs/grpc.BUILD
-+index 0e4e862c..32891d07 100644
++index 0e4e862..32891d0 100644
 +--- a/third_party/systemlibs/grpc.BUILD
 ++++ b/third_party/systemlibs/grpc.BUILD
 +@@ -10,6 +10,7 @@ cc_library(
@@ -569,7 +569,7 @@ index 0000000..21eb316
 + 
 + sh_binary(
 +diff --git a/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl b/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
-+index 83c2382a..a51db226 100644
++index 83c2382..a51db22 100644
 +--- a/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
 ++++ b/third_party/systemlibs/grpc.bazel.cc_grpc_library.bzl
 +@@ -13,6 +13,7 @@ def cc_grpc_library(
@@ -599,7 +599,7 @@ index 0000000..21eb316
 +         )
 +         cc_library(
 +diff --git a/third_party/systemlibs/grpc.bazel.generate_cc.bzl b/third_party/systemlibs/grpc.bazel.generate_cc.bzl
-+index f396b1f8..0faf4c0a 100644
++index f396b1f..0faf4c0 100644
 +--- a/third_party/systemlibs/grpc.bazel.generate_cc.bzl
 ++++ b/third_party/systemlibs/grpc.bazel.generate_cc.bzl
 +@@ -11,7 +11,7 @@ load(
@@ -612,7 +612,7 @@ index 0000000..21eb316
 + _GRPC_PROTO_HEADER_FMT = "{}.grpc.pb.h"
 + _GRPC_PROTO_SRC_FMT = "{}.grpc.pb.cc"
 +diff --git a/third_party/systemlibs/grpc.bazel.protobuf.bzl b/third_party/systemlibs/grpc.bazel.protobuf.bzl
-+index 9eeb4cb4..08812209 100644
++index 9eeb4cb..0881220 100644
 +--- a/third_party/systemlibs/grpc.bazel.protobuf.bzl
 ++++ b/third_party/systemlibs/grpc.bazel.protobuf.bzl
 +@@ -1,6 +1,6 @@
@@ -625,7 +625,7 @@ index 0000000..21eb316
 + _VIRTUAL_IMPORTS = "/_virtual_imports/"
 +diff --git a/third_party/systemlibs/grpc.bazel.python_rules.bzl b/third_party/systemlibs/grpc.bazel.python_rules.bzl
 +new file mode 100644
-+index 00000000..d430b67c
++index 0000000..d430b67
 +--- /dev/null
 ++++ b/third_party/systemlibs/grpc.bazel.python_rules.bzl
 +@@ -0,0 +1,55 @@
@@ -685,9 +685,128 @@ index 0000000..21eb316
 ++        **kwargs
 ++    )
 +\ No newline at end of file
++diff --git a/third_party/systemlibs/protobuf.BUILD b/third_party/systemlibs/protobuf.BUILD
++deleted file mode 100644
++index c7d9406..0000000
++--- a/third_party/systemlibs/protobuf.BUILD
+++++ /dev/null
++@@ -1,113 +0,0 @@
++-load(
++-    "@com_google_protobuf//:protobuf.bzl",
++-    "cc_proto_library",
++-    "proto_gen",
++-    "py_proto_library",
++-)
++-load("@rules_proto//proto:defs.bzl", "proto_library")
++-
++-licenses(["notice"])
++-
++-filegroup(
++-    name = "LICENSE",
++-    visibility = ["//visibility:public"],
++-)
++-
++-# Map of all well known protos.
++-# name => (include path, imports)
++-WELL_KNOWN_PROTO_MAP = {
++-    "any": ("google/protobuf/any.proto", []),
++-    "api": (
++-        "google/protobuf/api.proto",
++-        [
++-            "source_context",
++-            "type",
++-        ],
++-    ),
++-    "compiler_plugin": (
++-        "google/protobuf/compiler/plugin.proto",
++-        ["descriptor"],
++-    ),
++-    "descriptor": ("google/protobuf/descriptor.proto", []),
++-    "duration": ("google/protobuf/duration.proto", []),
++-    "empty": ("google/protobuf/empty.proto", []),
++-    "field_mask": ("google/protobuf/field_mask.proto", []),
++-    "source_context": ("google/protobuf/source_context.proto", []),
++-    "struct": ("google/protobuf/struct.proto", []),
++-    "timestamp": ("google/protobuf/timestamp.proto", []),
++-    "type": (
++-        "google/protobuf/type.proto",
++-        [
++-            "any",
++-            "source_context",
++-        ],
++-    ),
++-    "wrappers": ("google/protobuf/wrappers.proto", []),
++-}
++-
++-RELATIVE_WELL_KNOWN_PROTOS = [proto[1][0] for proto in WELL_KNOWN_PROTO_MAP.items()]
++-
++-genrule(
++-    name = "link_proto_files",
++-    outs = RELATIVE_WELL_KNOWN_PROTOS,
++-    cmd = """
++-      for i in $(OUTS); do
++-        f=$${i#$(@D)/}
++-        mkdir -p $(@D)/$${f%/*}
++-        ln -sf $(PROTOBUF_INCLUDE_PATH)/$$f $(@D)/$$f
++-      done
++-    """,
++-)
++-
++-cc_library(
++-    name = "protobuf",
++-    linkopts = ["-lprotobuf"],
++-    visibility = ["//visibility:public"],
++-)
++-
++-cc_library(
++-    name = "protobuf_headers",
++-    linkopts = ["-lprotobuf"],
++-    visibility = ["//visibility:public"],
++-)
++-
++-cc_library(
++-    name = "protoc_lib",
++-    linkopts = ["-lprotoc"],
++-    visibility = ["//visibility:public"],
++-)
++-
++-genrule(
++-    name = "protoc",
++-    outs = ["protoc.bin"],
++-    cmd = "ln -s $$(which protoc) $@",
++-    executable = 1,
++-    visibility = ["//visibility:public"],
++-)
++-
++-cc_proto_library(
++-    name = "cc_wkt_protos",
++-    internal_bootstrap_hack = 1,
++-    protoc = ":protoc",
++-    visibility = ["//visibility:public"],
++-)
++-
++-proto_gen(
++-    name = "protobuf_python_genproto",
++-    includes = ["."],
++-    protoc = "@com_google_protobuf//:protoc",
++-    visibility = ["//visibility:public"],
++-)
++-
++-py_library(
++-    name = "protobuf_python",
++-    srcs_version = "PY3",
++-    visibility = ["//visibility:public"],
++-)
++-
++-[proto_library(
++-    name = proto[0] + "_proto",
++-    srcs = [proto[1][0]],
++-    visibility = ["//visibility:public"],
++-    deps = [dep + "_proto" for dep in proto[1][1]],
++-) for proto in WELL_KNOWN_PROTO_MAP.items()]
 +diff --git a/third_party/systemlibs/protobuf.python.BUILD b/third_party/systemlibs/protobuf.python.BUILD
 +new file mode 100644
-+index 00000000..88d4bb21
++index 0000000..88d4bb2
 +--- /dev/null
 ++++ b/third_party/systemlibs/protobuf.python.BUILD
 +@@ -0,0 +1,30 @@
@@ -723,7 +842,7 @@ index 0000000..21eb316
 ++)
 +diff --git a/third_party/systemlibs/protobuf.python.dist.BUILD b/third_party/systemlibs/protobuf.python.dist.BUILD
 +new file mode 100644
-+index 00000000..7abb970f
++index 0000000..7abb970
 +--- /dev/null
 ++++ b/third_party/systemlibs/protobuf.python.dist.BUILD
 +@@ -0,0 +1,8 @@
@@ -737,7 +856,7 @@ index 0000000..21eb316
 ++])
 +diff --git a/third_party/systemlibs/protobuf.python.dist.system_python.bzl b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
 +new file mode 100644
-+index 00000000..1822ae9b
++index 0000000..1822ae9
 +--- /dev/null
 ++++ b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
 +@@ -0,0 +1,36 @@
@@ -779,7 +898,7 @@ index 0000000..21eb316
 ++)
 +diff --git a/third_party/systemlibs/protobuf.python.google.BUILD b/third_party/systemlibs/protobuf.python.google.BUILD
 +new file mode 100644
-+index 00000000..5646b85e
++index 0000000..5646b85
 +--- /dev/null
 ++++ b/third_party/systemlibs/protobuf.python.google.BUILD
 +@@ -0,0 +1,4 @@
@@ -789,7 +908,7 @@ index 0000000..21eb316
 ++package(default_visibility = ["//visibility:public"])
 +diff --git a/third_party/systemlibs/protobuf.python.google.protobuf.BUILD b/third_party/systemlibs/protobuf.python.google.protobuf.BUILD
 +new file mode 100644
-+index 00000000..679e4a02
++index 0000000..679e4a0
 +--- /dev/null
 ++++ b/third_party/systemlibs/protobuf.python.google.protobuf.BUILD
 +@@ -0,0 +1,35 @@
@@ -829,7 +948,7 @@ index 0000000..21eb316
 ++    ],
 ++)
 +diff --git a/third_party/xla/third_party/py/python_init_rules.bzl b/third_party/xla/third_party/py/python_init_rules.bzl
-+index 84370d1d..ad030157 100644
++index 84370d1..ad03015 100644
 +--- a/third_party/xla/third_party/py/python_init_rules.bzl
 ++++ b/third_party/xla/third_party/py/python_init_rules.bzl
 +@@ -1,6 +1,7 @@
@@ -865,7 +984,7 @@ index 0000000..21eb316
 + 
 +     tf_http_archive(
 +diff --git a/third_party/xla/workspace2.bzl b/third_party/xla/workspace2.bzl
-+index 3f9041ed..67607c0c 100644
++index 3f9041e..67607c0 100644
 +--- a/third_party/xla/workspace2.bzl
 ++++ b/third_party/xla/workspace2.bzl
 +@@ -8,6 +8,7 @@ load("@io_bazel_rules_closure//closure:defs.bzl", "filegroup_external")

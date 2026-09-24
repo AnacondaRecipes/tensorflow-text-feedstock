@@ -17,23 +17,24 @@ if [[ "${target_platform}" == osx-* ]]; then
   export SDKROOT=${CONDA_BUILD_SYSROOT}
 fi
 
-# TF's WORKSPACE load()s @llvm-raw//utils/bazel:configure.bzl even though
-# tensorflow-text builds no LLVM/MLIR targets. Stub the repo so Bazel is
-# satisfied without downloading ~260 MB of LLVM.
-LLVM_STUB="${SRC_DIR}/llvm-raw-stub"
-mkdir -p "${LLVM_STUB}/utils/bazel"
-touch "${LLVM_STUB}/WORKSPACE" "${LLVM_STUB}/BUILD.bazel" "${LLVM_STUB}/utils/bazel/BUILD.bazel"
-cat > "${LLVM_STUB}/utils/bazel/configure.bzl" <<'EOF'
-def _llvm_configure_stub(rctx):
-    rctx.file("WORKSPACE", "")
-    rctx.file("BUILD.bazel", "")
-
-llvm_configure = repository_rule(
-    implementation = _llvm_configure_stub,
-    attrs = {"targets": attr.string_list()},
-)
-EOF
-echo "build --override_repository=llvm-raw=${LLVM_STUB}" >> .bazelrc.user
+# Bazel downloads the LLVM archive with Accept-Encoding: identity, and
+# GitHub's CDN re-compresses commit archives over time, so the sha256 of
+# what Bazel fetches no longer matches TF's pin. Fetch the archive once
+# here, verify it against both known-good hashes (the variants are
+# byte-identical trees, only gzip framing differs), and hand it to Bazel
+# via --distdir.
+mkdir -p "${SRC_DIR}/llvm-distdir"
+LLVM_URL="https://github.com/llvm/llvm-project/archive/909041e4802c4b9a2223ca04099f35bf1dbbd460.tar.gz"
+LLVM_TARBALL="${SRC_DIR}/llvm-distdir/$(basename "${LLVM_URL}")"
+if [[ ! -f "${LLVM_TARBALL}" ]]; then
+  curl -L --retry 3 -o "${LLVM_TARBALL}" "${LLVM_URL}"
+fi
+LLVM_GOT="$( (sha256sum 2>/dev/null || shasum -a 256) < "${LLVM_TARBALL}" | awk '{print $1}')"
+case " 3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a 00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248 " in
+  *" ${LLVM_GOT} "*) ;;
+  *) echo "LLVM archive sha256 mismatch: got ${LLVM_GOT}" >&2; exit 1;;
+esac
+echo "build --distdir=${SRC_DIR}/llvm-distdir" >> .bazelrc.user
 
 # Generated TF proto headers come from the installed tensorflow package
 # (proto codegen is skipped for TF-archived protos - see protobuf_systemlib.patch).
