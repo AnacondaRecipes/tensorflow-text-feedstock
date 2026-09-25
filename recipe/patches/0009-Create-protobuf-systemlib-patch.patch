@@ -22,14 +22,19 @@ systemlibs/protobuf.BUILD and systemlibs/BUILD.bazel are left as-is:
 @com_google_protobuf is built by protobuf_bazel_repo, and repository
 rules resolve file labels without exports_files.
 
+No @system_python repo is registered: nothing in protobuf-bazel-rules,
+TF or tensorflow-text consumes it. protobuf-bazel-rules' rules_cc loads
+are used unmodified; TF's rules_cc 0.1.0 already resolves
+@bazel_tools//tools/cpp:toolchain_type.
+
 LLVM_SHA256 in xla/third_party/llvm/workspace.bzl is pinned to the
 re-compressed archive variant GitHub currently serves (00b1077e...), the
 one build.sh fetches into --distdir; TF's upstream pin (3f986184...) no
 longer matches what codeload returns.
 ---
  third_party/tensorflow/BUILD                    |    2 +-
- third_party/tensorflow/protobuf_systemlib.patch | 755 +
- 2 files changed, 756 insertions(+), 1 deletion(-)
+ third_party/tensorflow/protobuf_systemlib.patch | 667 +
+ 2 files changed, 668 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
 index 5c63f95..f2aa6ef 100644
@@ -43,10 +48,10 @@ index 5c63f95..f2aa6ef 100644
 +exports_files(["abseil_systemlib.patch", "protobuf_systemlib.patch"])
 diff --git a/third_party/tensorflow/protobuf_systemlib.patch b/third_party/tensorflow/protobuf_systemlib.patch
 new file mode 100644
-index 0000000..4bd9120
+index 0000000..110d64d
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,755 @@
+@@ -0,0 +1,667 @@
 +diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
 +index 9415199..85544ff 100644
 +--- a/tensorflow/workspace2.bzl
@@ -111,26 +116,23 @@ index 0000000..4bd9120
 + 
 +diff --git a/third_party/protobuf_bazel_init.bzl b/third_party/protobuf_bazel_init.bzl
 +new file mode 100644
-+index 0000000..eb0568e
++index 0000000..4a062f7
 +--- /dev/null
 ++++ b/third_party/protobuf_bazel_init.bzl
-+@@ -0,0 +1,10 @@
++@@ -0,0 +1,7 @@
 ++"""Register companion repos required by protobuf-bazel-rules."""
 ++
 ++load("@com_google_protobuf//bazel/private/oss:proto_bazel_features.bzl", "proto_bazel_features")
-++load("@com_google_protobuf//python/dist:system_python.bzl", "system_python")
 ++
 ++def protobuf_bazel_init():
 ++    """Call after python_init_rules() once @com_google_protobuf exists."""
 ++    proto_bazel_features(name = "proto_bazel_features")
-++    if not native.existing_rule("system_python"):
-++        system_python(name = "system_python")
 +diff --git a/third_party/protobuf_impl.bzl b/third_party/protobuf_impl.bzl
 +new file mode 100644
-+index 0000000..8bb7089
++index 0000000..a082438
 +--- /dev/null
 ++++ b/third_party/protobuf_impl.bzl
-+@@ -0,0 +1,123 @@
++@@ -0,0 +1,96 @@
 ++
 ++def _must_run(ctx, args, what):
 ++    result = ctx.execute(args)
@@ -165,11 +167,6 @@ index 0000000..4bd9120
 ++    _must_run(ctx, ["mkdir", "-p", "python/google/protobuf"], "mkdir python/google/protobuf")
 ++    _must_run(ctx, ["cp", ctx.path(ctx.attr.python_google_build), "python/google/BUILD.bazel"], "copy python/google BUILD")
 ++    _must_run(ctx, ["cp", ctx.path(ctx.attr.python_google_protobuf_build), "python/google/protobuf/BUILD.bazel"], "copy python/google/protobuf BUILD")
-++
-++    # python/dist stubs referenced during repository mapping (protobuf_deps.bzl).
-++    _must_run(ctx, ["mkdir", "-p", "python/dist"], "mkdir python/dist")
-++    _must_run(ctx, ["cp", ctx.path(ctx.attr.python_dist_build), "python/dist/BUILD.bazel"], "copy python/dist BUILD")
-++    _must_run(ctx, ["cp", ctx.path(ctx.attr.python_dist_system_python), "python/dist/system_python.bzl"], "copy system_python.bzl")
 ++
 ++    # Stub prebuilt toolchain registrations from copied bazel rules.
 ++    ctx.file("toolchain/BUILD", "")
@@ -207,27 +204,7 @@ index 0000000..4bd9120
 ++        fail("cc_proto_library.bzl: aspect attrs anchor not found")
 ++    cc_proto_content = cc_proto_content.replace(aspect_impl_needle, aspect_impl_repl, 1)
 ++    cc_proto_content = cc_proto_content.replace(aspect_attrs_needle, aspect_attrs_repl, 1)
-++    cc_proto_content = cc_proto_content.replace(
-++        'load("@rules_cc//cc:find_cc_toolchain.bzl", "use_cc_toolchain")',
-++        'load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "use_cpp_toolchain")',
-++    )
-++    cc_proto_content = cc_proto_content.replace(
-++        "use_cc_toolchain()",
-++        "use_cpp_toolchain()",
-++    )
 ++    ctx.file(cc_proto_bzl, cc_proto_content)
-++
-++    cc_proto_support_bzl = "bazel/private/cc_proto_support.bzl"
-++    cc_proto_support_content = ctx.read(cc_proto_support_bzl)
-++    cc_proto_support_content = cc_proto_support_content.replace(
-++        'load("@rules_cc//cc:find_cc_toolchain.bzl", "find_cc_toolchain")',
-++        'load("@bazel_tools//tools/cpp:toolchain_utils.bzl", "find_cpp_toolchain")',
-++    )
-++    cc_proto_support_content = cc_proto_support_content.replace(
-++        "find_cc_toolchain(",
-++        "find_cpp_toolchain(",
-++    )
-++    ctx.file(cc_proto_support_bzl, cc_proto_support_content)
 ++
 ++    # Bazel's ctx.fragments.proto suffix accessors are methods; use fixed defaults.
 ++    flags_bzl = "bazel/flags/flags.bzl"
@@ -250,8 +227,6 @@ index 0000000..4bd9120
 ++        "python_build": attr.label(mandatory = True, allow_single_file = True),
 ++        "python_google_build": attr.label(mandatory = True, allow_single_file = True),
 ++        "python_google_protobuf_build": attr.label(mandatory = True, allow_single_file = True),
-++        "python_dist_build": attr.label(mandatory = True, allow_single_file = True),
-++        "python_dist_system_python": attr.label(mandatory = True, allow_single_file = True),
 ++    },
 ++)
 +diff --git a/third_party/protobuf_systemlib.BUILD b/third_party/protobuf_systemlib.BUILD
@@ -449,7 +424,7 @@ index 0000000..4bd9120
 ++    visibility = ["//visibility:public"],
 ++) for proto in WELL_KNOWN_PROTO_MAP.items()]
 +diff --git a/third_party/py/python_init_rules.bzl b/third_party/py/python_init_rules.bzl
-+index 84370d1..4f62c66 100644
++index 84370d1..7f4b6b0 100644
 +--- a/third_party/py/python_init_rules.bzl
 ++++ b/third_party/py/python_init_rules.bzl
 +@@ -1,6 +1,7 @@
@@ -460,7 +435,7 @@ index 0000000..4bd9120
 + 
 + def python_init_rules(extra_patches = []):
 +     """Defines (doesn't setup) the rules_python repository.
-+@@ -20,16 +21,14 @@ def python_init_rules(extra_patches = []):
++@@ -20,16 +21,12 @@ def python_init_rules(extra_patches = []):
 +         ],
 +     )
 + 
@@ -479,8 +454,6 @@ index 0000000..4bd9120
 ++        python_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.BUILD",
 ++        python_google_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.BUILD",
 ++        python_google_protobuf_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.google.protobuf.BUILD",
-++        python_dist_build = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.BUILD",
-++        python_dist_system_python = "@org_tensorflow//third_party/systemlibs:protobuf.python.dist.system_python.bzl",
 +     )
 + 
 +     tf_http_archive(
@@ -681,62 +654,6 @@ index 0000000..4bd9120
 ++alias(
 ++    name = "proto_api",
 ++    actual = "//python/google/protobuf:proto_api",
-++)
-+diff --git a/third_party/systemlibs/protobuf.python.dist.BUILD b/third_party/systemlibs/protobuf.python.dist.BUILD
-+new file mode 100644
-+index 0000000..7abb970
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.python.dist.BUILD
-+@@ -0,0 +1,8 @@
-++# Stub BUILD file for protobuf python/dist directory
-++# Used when TF_SYSTEM_LIBS=com_google_protobuf
-++
-++package(default_visibility = ["//visibility:public"])
-++
-++exports_files([
-++    "system_python.bzl",
-++])
-+diff --git a/third_party/systemlibs/protobuf.python.dist.system_python.bzl b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
-+new file mode 100644
-+index 0000000..1822ae9
-+--- /dev/null
-++++ b/third_party/systemlibs/protobuf.python.dist.system_python.bzl
-+@@ -0,0 +1,36 @@
-++"""Stub for system_python.bzl when using TF_SYSTEM_LIBS=com_google_protobuf.
-++
-++This provides the system_python repository rule that protobuf's BUILD files expect,
-++but since we're using system-installed protobuf, we just need a minimal stub.
-++"""
-++
-++def _system_python_impl(repository_ctx):
-++    # Create a minimal BUILD file for the system_python repository
-++    repository_ctx.file("BUILD.bazel", """
-++# Stub BUILD file for system_python repository
-++# This is used when TF_SYSTEM_LIBS=com_google_protobuf
-++load("@bazel_skylib//lib:selects.bzl", "selects")
-++load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
-++
-++package(default_visibility = ["//visibility:public"])
-++
-++alias(
-++    name = "python_headers",
-++    actual = "@rules_python//python/cc:current_py_cc_headers",
-++)
-++
-++string_flag(
-++    name = "python_version",
-++    build_setting_default = "system",
-++)
-++
-++# Config settings for Python version selection
-++config_setting(
-++    name = "none",
-++    flag_values = {":python_version": "system"},
-++)
-++""")
-++
-++system_python = repository_rule(
-++    implementation = _system_python_impl,
 ++)
 +diff --git a/third_party/systemlibs/protobuf.python.google.BUILD b/third_party/systemlibs/protobuf.python.google.BUILD
 +new file mode 100644
