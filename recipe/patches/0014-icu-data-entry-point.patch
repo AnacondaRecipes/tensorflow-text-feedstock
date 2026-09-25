@@ -1,0 +1,61 @@
+From 94e3dcbb217414c3d31fe787c53f8a21f75368fd Mon Sep 17 00:00:00 2001
+From: Raviteja Gorijala <36429068+rtg0795@users.noreply.github.com>
+Date: Thu, 3 Sep 2026 20:47:19 +0000
+Subject: [PATCH] Fix ICU Unicode normalization data symbol name and link
+ configuration in TF-Text
+
+Backport of tensorflow/text@94e3dcbb (#1548), adapted to v2.21.0
+(stubdata headers were already absent from BUILD.bzl on this tag).
+
+PiperOrigin-RevId: 972217013
+---
+ third_party/icu/BUILD.bzl                 | 1 -
+ third_party/icu/data/BUILD                | 6 +++---
+ third_party/icu/data/normalization_data.c | 4 ++--
+ 3 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/third_party/icu/BUILD.bzl b/third_party/icu/BUILD.bzl
+--- a/third_party/icu/BUILD.bzl
++++ b/third_party/icu/BUILD.bzl
+@@ -50,7 +50,6 @@ cc_library(
+         [
+             "icu4c/source/common/*.c",
+             "icu4c/source/common/*.cpp",
+-            "icu4c/source/stubdata/*.cpp",
+         ],
+     ),
+     hdrs = glob([
+diff --git a/third_party/icu/data/BUILD b/third_party/icu/data/BUILD
+--- a/third_party/icu/data/BUILD
++++ b/third_party/icu/data/BUILD
+@@ -23,9 +23,9 @@ exports_files(["LICENSE"])
+ #   $ ICU_DATA_FILTER_FILE=filters.json ./runConfigureICU Linux
+ #   $ make clean && make
+ #   $ cd data/out/tmp
+-#   $ genccode icudt64l.dat
+-#   $ echo 'U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt64l_dat.bytes; }' >> icudt64l_dat.c
+-# This creates icudt64l_dat.c which you can rename and move in here.
++#   $ genccode -e icudt77 icudt77l.dat
++#   $ echo 'U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt77_dat.bytes; }' >> icudt77_dat.c
++# This creates icudt77_dat.c which you can rename to normalization_data.c and move in here.
+ cc_library(
+     name = "icu_normalization_data",
+     srcs = ["normalization_data.c"],
+diff --git a/third_party/icu/data/normalization_data.c b/third_party/icu/data/normalization_data.c
+--- a/third_party/icu/data/normalization_data.c
++++ b/third_party/icu/data/normalization_data.c
+@@ -7,7 +7,7 @@ U_CDECL_BEGIN
+ const struct {
+     double bogus;
+     uint8_t bytes[223376]; 
+-} icudt77l_dat={ 0.0, {
++} icudt77_dat={ 0.0, {
+ 144,0,218,39,20,0,0,0,0,0,2,0,67,109,110,68,
+ 1,0,0,0,3,0,0,0,32,67,111,112,121,114,105,103,
+ 104,116,32,40,67,41,32,50,48,49,54,32,97,110,100,32,
+@@ -13973,4 +13973,4 @@ const struct {
+ };
+ U_CDECL_END
+ 
+-U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt77l_dat.bytes; }
++U_CAPI const void * U_EXPORT2 uprv_getICUData_other() { return icudt77_dat.bytes; }
