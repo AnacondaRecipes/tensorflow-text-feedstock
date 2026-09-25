@@ -18,10 +18,15 @@ creates @com_google_protobuf) and tensorflow/workspace2.bzl (grpc
 systemlib links). XLA's python_init_rules.bzl/workspace2.bzl are never
 loaded here, and tf_workspace2()'s maybe(com_google_protobuf) is skipped
 because python_init_rules() already defined it.
+
+LLVM_SHA256 in xla/third_party/llvm/workspace.bzl is pinned to the
+re-compressed archive variant GitHub currently serves (00b1077e...), the
+one build.sh fetches into --distdir; TF's upstream pin (3f986184...) no
+longer matches what codeload returns.
 ---
  third_party/tensorflow/BUILD                    |    2 +-
- third_party/tensorflow/protobuf_systemlib.patch | 883 +
- 2 files changed, 884 insertions(+), 1 deletion(-)
+ third_party/tensorflow/protobuf_systemlib.patch | 896 +
+ 2 files changed, 897 insertions(+), 1 deletion(-)
 
 diff --git a/third_party/tensorflow/BUILD b/third_party/tensorflow/BUILD
 index 5c63f95..f2aa6ef 100644
@@ -35,10 +40,10 @@ index 5c63f95..f2aa6ef 100644
 +exports_files(["abseil_systemlib.patch", "protobuf_systemlib.patch"])
 diff --git a/third_party/tensorflow/protobuf_systemlib.patch b/third_party/tensorflow/protobuf_systemlib.patch
 new file mode 100644
-index 0000000..62f8d35
+index 0000000..e631944
 --- /dev/null
 +++ b/third_party/tensorflow/protobuf_systemlib.patch
-@@ -0,0 +1,883 @@
+@@ -0,0 +1,896 @@
 +diff --git a/tensorflow/workspace2.bzl b/tensorflow/workspace2.bzl
 +index 9415199..85544ff 100644
 +--- a/tensorflow/workspace2.bzl
@@ -922,3 +927,16 @@ index 0000000..62f8d35
 ++        "@rules_python//python/cc:current_py_cc_headers",
 ++    ],
 ++)
++diff --git a/third_party/xla/third_party/llvm/workspace.bzl b/third_party/xla/third_party/llvm/workspace.bzl
++index 9b5614a..4cb05de 100644
++--- a/third_party/xla/third_party/llvm/workspace.bzl
+++++ b/third_party/xla/third_party/llvm/workspace.bzl
++@@ -5,7 +5,7 @@ load("//third_party:repo.bzl", "tf_http_archive")
++ def repo(name):
++     """Imports LLVM."""
++     LLVM_COMMIT = "909041e4802c4b9a2223ca04099f35bf1dbbd460"
++-    LLVM_SHA256 = "3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a"
+++    LLVM_SHA256 = "00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
++ 
++     tf_http_archive(
++         name = name,
