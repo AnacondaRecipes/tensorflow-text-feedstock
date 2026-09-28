@@ -27,10 +27,12 @@ TF or tensorflow-text consumes it. protobuf-bazel-rules' rules_cc loads
 are used unmodified; TF's rules_cc 0.1.0 already resolves
 @bazel_tools//tools/cpp:toolchain_type.
 
-LLVM_SHA256 in xla/third_party/llvm/workspace.bzl is pinned to the
-re-compressed archive variant GitHub currently serves (00b1077e...), the
-one build.sh fetches into --distdir; TF's upstream pin (3f986184...) no
-longer matches what codeload returns.
+LLVM_SHA256 in xla/third_party/llvm/workspace.bzl is cleared. GitHub's
+codeload alternates between two byte-identical framings of this archive
+(3f986184..., 00b1077e...), so no single pin is stable and workers on
+different edges fail on whichever one they don't expect. build.sh fetches
+the archive, verifies it against both known-good hashes, and supplies it
+to Bazel via --distdir.
 ---
  third_party/tensorflow/BUILD                    |    2 +-
  third_party/tensorflow/protobuf_systemlib.patch | 667 +
@@ -715,7 +717,7 @@ index 0000000..110d64d
 +     """Imports LLVM."""
 +     LLVM_COMMIT = "909041e4802c4b9a2223ca04099f35bf1dbbd460"
 +-    LLVM_SHA256 = "3f986184ee126677dbd77edb16d6b82c057ec869fefd7a9871979941e52e837a"
-++    LLVM_SHA256 = "00b1077e029fa57e6f2d9ac24936a49acf23ebc051b04f487131116258be6248"
+++    LLVM_SHA256 = ""
 + 
 +     tf_http_archive(
 +         name = name,
